@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plataforma Minisumo</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c222b; --linea:#2a313c;
+    --txt:#e6edf3; --txt2:#9aa7b4; --txt3:#6b7682;
+    --ok:#3fb950; --mal:#f85149; --aviso:#d29922;
+    --ac:#f0883e; --az:#58a6ff; --mo:#bc8cff; --ve:#39c5bb;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+  header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--linea);position:sticky;top:0;z-index:30;flex-wrap:wrap}
+  h1{font-size:15px;margin:0;font-weight:650;letter-spacing:.2px;white-space:nowrap}
+  h1 span{color:var(--ac)}
+  .tabs{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+  .tab{background:none;border:1px solid transparent;color:var(--txt2);padding:6px 13px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600}
+  .tab:hover{color:var(--txt);background:var(--panel2)}
+  .tab.on{background:var(--panel2);color:var(--txt);border-color:var(--linea)}
+  main{padding:16px;max-width:1560px;margin:0 auto}
+  .vista{display:none} .vista.on{display:block}
+  .cols{display:grid;gap:14px}
+  @media(min-width:1080px){ .cols.c2{grid-template-columns:minmax(0,1fr) 390px} .cols.c2i{grid-template-columns:390px minmax(0,1fr)} }
+  .caja{background:var(--panel);border:1px solid var(--linea);border-radius:11px;padding:14px;margin-bottom:14px}
+  .caja h2{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt2);margin:0 0 11px;display:flex;align-items:center;gap:8px}
+  button{font:inherit;font-weight:600;cursor:pointer;border-radius:7px;border:1px solid var(--linea);background:var(--panel2);color:var(--txt);padding:7px 13px}
+  button:hover:not(:disabled){border-color:#3d4654;background:#232b36}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button.pri{background:var(--ac);border-color:var(--ac);color:#15191f}
+  button.pri:hover:not(:disabled){background:#ff9b52;border-color:#ff9b52}
+  button.pel{background:#3d1d1d;border-color:#6e2b2b;color:#ffb0ab}
+  button.min{padding:4px 9px;font-size:12px}
+  .fila{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pill{font:600 11px/1 var(--mono);padding:5px 9px;border-radius:999px;background:var(--panel2);border:1px solid var(--linea);color:var(--txt2);white-space:nowrap}
+  .pill.ok{color:var(--ok);border-color:#1f6f2e;background:#102a16}
+  .pill.mal{color:var(--mal);border-color:#6e2b2b;background:#2a1113}
+  .pill.av{color:var(--aviso);border-color:#6b5312;background:#2a2210}
+  canvas{display:block;width:100%;background:#0a0d12;border-radius:9px;border:1px solid var(--linea)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:5px 7px;border-bottom:1px solid var(--linea);vertical-align:middle}
+  th{color:var(--txt2);font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  td.n,th.n{text-align:right;font-family:var(--mono)}
+  td.c,th.c{text-align:center}
+  label{display:block;font-size:11px;color:var(--txt2);margin-bottom:3px;font-weight:600}
+  input[type=number],input[type=text],select{width:100%;background:#0b0f14;border:1px solid var(--linea);color:var(--txt);border-radius:6px;padding:6px 8px;font:13px var(--mono)}
+  input.mini{padding:3px 5px;font-size:12px}
+  input[type=range]{width:100%;accent-color:var(--ac)}
+  .campos{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:9px}
+  .sw{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--txt);margin:0;text-transform:none;letter-spacing:0;cursor:pointer}
+  .sw input{accent-color:var(--ac);width:15px;height:15px}
+  .log{height:160px;overflow:auto;background:#080b0f;border:1px solid var(--linea);border-radius:7px;padding:8px;font:11px/1.55 var(--mono);color:#8b98a5;white-space:pre-wrap;word-break:break-all}
+  .nota{font-size:12px;color:var(--txt2);margin:9px 0 0;line-height:1.6}
+  .kv{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:13px;border-bottom:1px solid #1d232c}
+  .kv b{font-family:var(--mono);font-weight:600}
+  .led{display:inline-block;width:11px;height:11px;border-radius:50%;background:#2a313c;border:1px solid #39414d}
+  .led.on{background:var(--ok);border-color:var(--ok);box-shadow:0 0 7px #3fb95088}
+  .led.lin{background:#fff;border-color:#fff;box-shadow:0 0 7px #ffffff88}
+  .ayuda{font-size:13px;color:var(--txt2);line-height:1.75}
+  .ayuda code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-family:var(--mono);color:var(--ac);font-size:12px}
+  .ayuda h3{color:var(--txt);font-size:13px;margin:18px 0 6px}
+  .ayuda ol,.ayuda ul{padding-left:20px;margin:6px 0}
+  pre.cod{background:#080b0f;border:1px solid var(--linea);border-radius:7px;padding:11px;overflow:auto;font:11.5px/1.5 var(--mono);color:#b9c6d2;margin:0}
+  details summary{cursor:pointer;color:var(--txt2);font-size:12px;font-weight:600;padding:4px 0}
+  .vacio{color:var(--txt3);font-size:13px;padding:14px;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <h1>Plataforma <span>Minisumo</span></h1>
+  <span id="estadoCon" class="pill mal">Sin conectar</span>
+  <span id="estadoPlaca" class="pill" style="display:none"></span>
+  <span id="estadoHz" class="pill">— Hz</span>
+  <div class="tabs">
+    <button class="tab on" data-v="vivo">En vivo</button>
+    <button class="tab" data-v="sim">Simulador</button>
+    <button class="tab" data-v="config">Mis sensores</button>
+    <button class="tab" data-v="ayuda">Manual</button>
+  </div>
+</header>
+
+<main>
+<!-- ============================ EN VIVO ============================ -->
+<section class="vista on" id="v-vivo">
+  <div class="cols c2">
+    <div>
+      <div class="caja">
+        <h2>Vista del robot</h2>
+        <canvas id="cvRobot" height="470"></canvas>
+        <p class="nota">El dibujo se arma solo con la posición y el ángulo que le pusiste a cada sensor en <code>configuracion.h</code>. La flecha naranja es hacia dónde cree el robot que está el rival.</p>
+      </div>
+      <div class="caja">
+        <h2>Sensores</h2>
+        <div id="tablaSensores"><p class="vacio">Conecta el robot para ver sus sensores.</p></div>
+      </div>
+      <div class="caja">
+        <h2>Gráfica (últimos 12 s)</h2>
+        <canvas id="cvGraf" height="230"></canvas>
+        <div class="fila" id="legGraf" style="margin-top:9px"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="caja">
+        <h2>Conexión USB</h2>
+        <div class="fila">
+          <button id="btnCon" class="pri">Conectar</button>
+          <button id="btnDes" disabled>Desconectar</button>
+          <button id="btnPide" disabled>Releer config</button>
+        </div>
+        <p class="nota" id="notaCon">Conecta la placa por USB y presiona Conectar. Chrome te va a preguntar cuál puerto usar.</p>
+      </div>
+
+      <div class="caja">
+        <h2>Estado</h2>
+        <div class="kv"><span>Arrancador</span><b id="vStart">—</b></div>
+        <div class="kv"><span>Kill</span><b id="vKill">—</b></div>
+        <div class="kv"><span>Dipswitch</span><b id="vDip">—</b></div>
+        <div class="kv"><span>Apertura</span><b id="vModo">—</b></div>
+        <div class="kv"><span>Qué está haciendo</span><b id="vEstado">—</b></div>
+        <div class="kv"><span>Rumbo al rival</span><b id="vRumbo">—</b></div>
+        <div class="kv"><span>PWM izq / der</span><b id="vPwm">—</b></div>
+      </div>
+
+      <div class="caja">
+        <h2>Calibrar la línea</h2>
+        <div class="fila">
+          <button id="btnNegro">Medir negro</button>
+          <button id="btnBlanco">Medir blanco</button>
+          <button id="btnAplicar" disabled>Mandar umbrales</button>
+        </div>
+        <div id="calTabla" style="margin-top:10px"></div>
+        <p class="nota">Pon el robot sobre el negro y presiona Medir negro; luego sobre la línea blanca y Medir blanco. Cada medición toma 1.5 s. Al mandar los umbrales el robot los usa al instante, pero <b>no se guardan</b>: cópialos a <code>configuracion.h</code> cuando te gusten.</p>
+      </div>
+
+      <div class="caja">
+        <h2>Prueba de motores</h2>
+        <div class="campos" style="margin-bottom:10px">
+          <div><label>PWM</label><input type="number" id="tpPwm" value="150" min="0" max="255"></div>
+          <div><label>Duración (ms)</label><input type="number" id="tpMs" value="800" min="50" max="3000"></div>
+        </div>
+        <div class="fila">
+          <button data-mot="1,1">Adelante</button>
+          <button data-mot="-1,-1">Atrás</button>
+          <button data-mot="-1,1">Giro izq</button>
+          <button data-mot="1,-1">Giro der</button>
+          <button data-mot="1,0">Solo izq</button>
+          <button data-mot="0,1">Solo der</button>
+          <button id="btnStop" class="pel">PARAR</button>
+        </div>
+        <p class="nota" id="notaMot">Levanta el robot. Solo funciona con el arrancador apagado.</p>
+      </div>
+
+      <div class="caja">
+        <h2>Grabar</h2>
+        <div class="fila">
+          <button id="btnRec">Empezar a grabar</button>
+          <button id="btnCsv" disabled>Descargar CSV</button>
+          <span class="pill" id="vRec">0 muestras</span>
+        </div>
+      </div>
+
+      <div class="caja">
+        <h2>Texto crudo</h2>
+        <div class="log" id="logVivo"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ SIMULADOR ============================ -->
+<section class="vista" id="v-sim">
+  <div class="cols c2">
+    <div>
+      <div class="caja">
+        <h2>Dohyo (77 cm) <span class="pill" id="simSens">6 sensores</span></h2>
+        <canvas id="cvSim" height="560"></canvas>
+        <div class="fila" style="margin-top:11px">
+          <button id="sPlay" class="pri">Correr</button>
+          <button id="sPaso">Un paso</button>
+          <button id="sReset">Reiniciar</button>
+          <span class="pill" id="sTiempo">0.0 s</span>
+          <span class="pill" id="sFin">—</span>
+          <span style="flex:1;min-width:130px"><label>Velocidad <span id="sVelTxt">1×</span></label><input type="range" id="sVel" min="0" max="4" step="1" value="1"></span>
+        </div>
+        <div class="fila" style="margin-top:9px">
+          <label class="sw"><input type="checkbox" id="sRayos" checked> Ver sensores</label>
+          <label class="sw"><input type="checkbox" id="sRastro" checked> Ver rastro</label>
+          <label class="sw"><input type="checkbox" id="sGente"> Gente alrededor</label>
+        </div>
+      </div>
+      <div class="caja">
+        <h2>Muchos rounds de golpe</h2>
+        <div class="campos" style="margin-bottom:10px">
+          <div><label>Rounds por caso</label><input type="number" id="loteN" value="40" min="5" max="400"></div>
+          <div><label>Límite (s)</label><input type="number" id="loteT" value="20" min="5" max="90"></div>
+        </div>
+        <div class="fila"><button id="btnLote" class="pri">Correr</button><span class="pill" id="loteEstado">—</span></div>
+        <div id="loteTabla" style="margin-top:11px"></div>
+        <p class="nota">Corre todas las colocaciones de salida contra el rival elegido, con variaciones al azar como en un torneo. Si pusiste los robots a mano, corre solo esa posición.</p>
+      </div>
+    </div>
+
+    <div>
+      <div class="caja">
+        <h2>Round</h2>
+        <div style="margin-bottom:9px"><label>Apertura (dipswitch)</label><select id="sModo"></select></div>
+        <div style="margin-bottom:9px"><label>Rival</label><select id="sRival"></select></div>
+        <div style="margin-bottom:9px"><label>Cómo los colocan</label><select id="sPos"></select></div>
+        <div id="posLibre" style="display:none;margin-bottom:9px">
+          <table style="margin-bottom:7px">
+            <tr><th></th><th class="n">x (cm)</th><th class="n">y (cm)</th><th class="n">ángulo</th></tr>
+            <tr><td style="color:var(--ac)">tú</td>
+              <td><input class="mini" type="number" id="pAx" step="0.5"></td>
+              <td><input class="mini" type="number" id="pAy" step="0.5"></td>
+              <td><input class="mini" type="number" id="pAa" step="5"></td></tr>
+            <tr><td style="color:var(--az)">rival</td>
+              <td><input class="mini" type="number" id="pBx" step="0.5"></td>
+              <td><input class="mini" type="number" id="pBy" step="0.5"></td>
+              <td><input class="mini" type="number" id="pBa" step="5"></td></tr>
+          </table>
+          <div class="fila"><button class="min" id="btnIntercambia">Intercambiar</button><button class="min" id="btnDesdeSalida">Volver a la salida</button></div>
+          <p class="nota">Arrastra cada robot en el dohyo, o jala el puntito de enfrente para girarlo.</p>
+        </div>
+        <div class="campos"><div><label>Límite (s)</label><input type="number" id="sLimite" value="30" min="5" max="90"></div></div>
+        <label class="sw" style="margin-top:9px"><input type="checkbox" id="sJitter" checked> Variación al azar al colocarlos</label>
+      </div>
+
+      <div class="caja">
+        <h2>Constantes del programa</h2>
+        <div class="campos" id="campP"></div>
+        <div class="fila" style="margin-top:11px">
+          <button id="btnPDef">Valores por defecto</button>
+          <button id="btnPRobot" disabled>Leer del robot</button>
+        </div>
+      </div>
+
+      <div class="caja">
+        <h2>Física del robot</h2>
+        <div class="campos" id="campF"></div>
+        <details style="margin-top:11px">
+          <summary>Qué significa cada una</summary>
+          <p class="nota">
+            <b>rpm</b> y <b>llanta</b> (mm) dan la velocidad máxima.<br>
+            <b>fuerza</b>: empuje de un lado con las llantas paradas, en newtons.<br>
+            <b>mu</b>: agarre de las llantas (0.9 es silicón sobre dohyo).<br>
+            <b>giroEscala</b>: lo que le cuesta girar sobre su eje. 1.0 es el cálculo teórico con 4 llantas rígidas; bájalo si tu robot gira más rápido que en la simulación.<br>
+            <b>alcance</b> (cm): hasta dónde ven los sensores digitales. Los Sharp y el ultrasónico usan su propio rango.<br>
+            <b>cono</b>: medio ángulo del haz de cada sensor, en grados.<br>
+            <b>cuchilla</b>: tracción que le quita al rival al pegarle de frente (35 = 35 %).
+          </p>
+        </details>
+      </div>
+
+      <div class="caja">
+        <h2>Calibrar los giros</h2>
+        <p class="nota" style="margin:0 0 9px">Mide cuánto gira el robot simulado con los tiempos de arriba, para compararlo con el robot real.</p>
+        <button id="btnCalG">Medir</button>
+        <div id="calRes" style="margin-top:9px"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ MIS SENSORES ============================ -->
+<section class="vista" id="v-config">
+  <div class="cols c2i">
+    <div>
+      <div class="caja">
+        <h2>Vista previa</h2>
+        <canvas id="cvConf" height="420"></canvas>
+        <p class="nota">Así quedan acomodados tus sensores vistos desde arriba.</p>
+      </div>
+      <div class="caja">
+        <h2>Para pegar en configuracion.h</h2>
+        <pre class="cod" id="codigoCfg"></pre>
+        <div class="fila" style="margin-top:10px">
+          <button id="btnCopia" class="pri">Copiar</button>
+          <button id="btnUsaSim">Usar en el simulador</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="caja">
+        <h2>Mis sensores</h2>
+        <div id="editor"></div>
+        <div class="fila" style="margin-top:11px">
+          <button id="btnAdd" class="pri">Agregar sensor</button>
+          <button id="btnDelRobot" disabled>Traer los del robot</button>
+          <button id="btnDefault">Ejemplo</button>
+        </div>
+        <p class="nota">
+          <b>x</b> y <b>y</b> son milímetros desde el centro del robot: x hacia adelante, y hacia la izquierda.
+          <b>ángulo</b> es hacia dónde mira: 0 al frente, 90 a la izquierda, −90 a la derecha, 180 atrás.<br>
+          El <b>umbral</b> va en la unidad del sensor y no se usa en los digitales.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ MANUAL ============================ -->
+<section class="vista" id="v-ayuda">
+  <div class="cols c2i">
+    <div class="caja ayuda">
+      <h2>Protocolo</h2>
+      <h3>La placa manda</h3>
+      <code>I,nombre,version,placa,arquitectura,nSensores,adcMax</code><br>
+      <code>S,idx,id,nombre,tipo,unidad,rol,sector,umbral,x,y,ang</code><br>
+      <code>P,clave=valor,...</code><br>
+      <code>D,ms,estado,modo,start,kill,dip,vIzq,vDer,v0,v1,…</code><br>
+      <code>E,texto</code>
+      <h3>La plataforma manda</h3>
+      <code>?</code> pide la configuración<br>
+      <code>M,vL,vR,ms</code> prueba de motores<br>
+      <code>X</code> frena<br>
+      <code>U,idx,umbral</code> cambia un umbral
+      <h3>Tipos de sensor</h3>
+      <div id="tiposAyuda"></div>
+    </div>
+    <div class="caja ayuda">
+      <h2>Cómo se usa</h2>
+      <ol>
+        <li>Abre <code>firmware/minisumo/minisumo.ino</code> en el Arduino IDE.</li>
+        <li>Edita <b>solo</b> <code>configuracion.h</code>: elige tu placa y escribe tu tabla de sensores. La pestaña <b>Mis sensores</b> te genera ese bloque listo para pegar.</li>
+        <li>Elige tu placa en el IDE y súbelo.</li>
+        <li>Cierra el Monitor Serie (si queda abierto se queda con el puerto).</li>
+        <li>Abre esta página en <b>Chrome</b> o Edge y presiona <b>Conectar</b>.</li>
+      </ol>
+      <h3>Si no aparece el botón Conectar</h3>
+      Web Serial solo existe en Chrome, Edge y Opera. En Firefox y Safari no funciona. Además la página tiene que abrirse desde el archivo (doble clic) o desde https, no dentro de otra página.
+      <h3>Qué revisar la primera vez</h3>
+      <ul>
+        <li>Tapa cada sensor y confirma que se prenda el que dice su nombre. Si se prenden cruzados, cambia los pines en <code>configuracion.h</code>.</li>
+        <li>Levanta el robot y prueba los motores. Si uno gira al revés, pon su <code>INVERTIR_</code> en <code>true</code>. Si al pedir adelante gira, pon <code>INTERCAMBIAR_MOTORES</code> en <code>true</code>.</li>
+        <li>Calibra la línea con los botones de Medir negro y Medir blanco.</li>
+      </ul>
+      <h3 style="color:var(--aviso)">Ojo con la simulación</h3>
+      La física es aproximada: sirve para <b>comparar</b> opciones entre sí y para encontrar errores de lógica, no para saber cuánto vas a ganar de verdad. Mide con cronómetro cuánto tarda tu robot real en girar 90° y ajusta <b>giroEscala</b> hasta que la simulación tarde lo mismo. De ahí en adelante las comparaciones valen mucho más.
+    </div>
+  </div>
+</section>
+</main>
+
+<script>
+/* ===== MOTOR DE SIMULACION (se inyecta al armar el archivo) ===== */
+/* =====================================================================
+   motor_sim.js  -  simulador de combate minisumo (2D, vista de arriba)
+   ---------------------------------------------------------------------
+   Corre el MISMO programa del firmware (traducido linea por linea) con
+   los MISMOS sensores que declaraste en configuracion.h. Si conectas el
+   robot, la plataforma le pide su lista de sensores y el simulador la
+   usa tal cual.
+
+   Unidades: metros, kilos, segundos. Angulos en radianes salvo donde
+   diga grados.
+   ===================================================================== */
+const SIM = (() => {
+
+  /* ---------- constantes que coinciden con el firmware ---------- */
+  const TIPO = { DIG_ALTO:0, DIG_BAJO:1, ANA_MAYOR:2, ANA_MENOR:3, SHARP_41:4,
+                 SHARP_21:5, QTR_RC:6, QTR_ANA:7, HCSR04:8 };
+  const NOMBRE_TIPO = ["digital-alto","digital-bajo","analogico-mayor","analogico-menor",
+                       "sharp-41","sharp-21","qtr-rc","qtr-analogico","ultrasonico"];
+  const UNIDAD = ["","","adc","adc","mm","mm","us","adc","mm"];
+  const ROL = { OPONENTE:0, LINEA:1 };
+  const SEC = { FRENTE:0, IZQ:1, DER:2, ATRAS:3 };
+  const NOMBRE_SEC = ["Frente","Izquierda","Derecha","Atrás"];
+  const DIST_LEJOS = 9999, QTR_TOPE = 3000;
+
+  const G = 9.81, DT = 0.002, R = 0.385, BORDE = 0.025;
+  const IZQ = -1, DER = 1;
+  const ESTADOS = ["Esperando","Apertura","Línea blanca","Ataque","Giro al costado","Búsqueda","Prueba de motores"];
+  const APERTURAS = ["0 Automática","1 Ataque directo","2 Giro 90° izquierda","3 Giro 90° derecha",
+                     "4 Giro 180° (derecha)","5 Flanqueo izquierda","6 Flanqueo derecha","7 Giro 180° (izquierda)"];
+
+  const PARAM_DEF = {
+    VEL_ATAQUE:255, VEL_AVANCE:204, VEL_GIRO:153, VEL_ESCAPE:255, VEL_BUSQUEDA:153,
+    PCT_CORRECCION:55, ANG_CORRECCION_PLENA:20, ANG_ATAQUE:60, DIST_NOMINAL:150,
+    T_GIRO_90:230, T_GIRO_180:460, T_GIRO_45:115, T_RETROCESO:250, T_ESCAPE:220,
+    T_ARCO:450, PCT_ARCO_INTERIOR:45, T_DIRECTO:600, PCT_GIRO_CIEGO:60, BUSCAR_GIRANDO:0,
+  };
+  const FIS_DEF = { masa:500, rpm:375, llanta:27.5, fuerza:5.0, mu:0.9, giroEscala:1.0,
+                    lado:98, track:80, base:47, alcance:70, cono:8, cuchilla:35 };
+  const vmaxDe = f => (f.rpm / 60) * Math.PI * (f.llanta / 1000);
+
+  /* ---------- sensores por defecto (se reemplazan por los del robot) ---------- */
+  const SENSORES_DEF = [
+    { id:"fI", nombre:"Frente izquierdo", tipo:TIPO.DIG_ALTO, rol:0, sector:0, umbral:0,   x:46,  y:16,  ang:0   },
+    { id:"fD", nombre:"Frente derecho",   tipo:TIPO.DIG_ALTO, rol:0, sector:0, umbral:0,   x:46,  y:-16, ang:0   },
+    { id:"lI", nombre:"Costado izquierdo",tipo:TIPO.DIG_ALTO, rol:0, sector:1, umbral:0,   x:0,   y:49,  ang:90  },
+    { id:"lD", nombre:"Costado derecho",  tipo:TIPO.DIG_ALTO, rol:0, sector:2, umbral:0,   x:0,   y:-49, ang:-90 },
+    { id:"qI", nombre:"Línea izquierda",  tipo:TIPO.QTR_RC,   rol:1, sector:1, umbral:600, x:40,  y:35,  ang:0   },
+    { id:"qD", nombre:"Línea derecha",    tipo:TIPO.QTR_RC,   rol:1, sector:2, umbral:600, x:40,  y:-35, ang:0   },
+  ];
+
+  const daDistancia = t => t === TIPO.SHARP_41 || t === TIPO.SHARP_21 || t === TIPO.HCSR04;
+  /* alcance de cada tipo, en metros ("alcance" de la fisica es el de los digitales) */
+  function alcanceDe(s, fis) {
+    switch (s.tipo) {
+      case TIPO.SHARP_41: return 0.30;
+      case TIPO.SHARP_21: return 0.80;
+      case TIPO.HCSR04:   return 1.00;
+      default:            return (fis.alcance || 70) / 100;
+    }
+  }
+  /* misma regla de deteccion que evaluaSensor() del firmware */
+  function evalua(s, v) {
+    switch (s.tipo) {
+      case TIPO.DIG_ALTO:  return v === 1;
+      case TIPO.DIG_BAJO:  return v === 0;
+      case TIPO.ANA_MAYOR: return v >= s.umbral;
+      default:             return v <= s.umbral;
+    }
+  }
+
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+  const rnd = (a,b) => a + Math.random() * (b - a);
+
+  /* ===================== CUERPOS Y FISICA ===================== */
+  function cuerpo(f, nombre, sensores) {
+    const L = f.lado / 1000, m = f.masa / 1000;
+    return {
+      nombre, x:0, y:0, th:0, vx:0, vy:0, w:0, m, I: m * 2 * L * L / 12, L,
+      track: f.track/1000, base: f.base/1000, vmax: vmaxDe(f), fuerza: f.fuerza, mu: f.mu,
+      giroEscala: f.giroEscala ?? 1, cuchilla: f.cuchilla/100, fis: f, sensores,
+      uL:0, uR:0, trac:1, tracSig:1, rastro:[],
+      valor: new Array(sensores.length).fill(0), detecta: new Array(sensores.length).fill(false),
+      verSector:[false,false,false,false], distSector:[DIST_LEJOS,DIST_LEJOS,DIST_LEJOS,DIST_LEJOS],
+      lineaSector:[false,false,false,false], hayLinea:false, rumbo:0, veRival:false,
+    };
+  }
+  const ejes = b => { const c = Math.cos(b.th), s = Math.sin(b.th); return { fx:c, fy:s, lx:-s, ly:c }; };
+  function esquinas(b) {
+    const { fx, fy, lx, ly } = ejes(b), h = b.L / 2;
+    return [[1,1],[1,-1],[-1,-1],[-1,1]].map(([a,c]) => ({ x: b.x + fx*h*a + lx*h*c, y: b.y + fy*h*a + ly*h*c }));
+  }
+  const aMundo = (b, px, py) => { const { fx, fy, lx, ly } = ejes(b); return { x: b.x + fx*px + lx*py, y: b.y + fy*px + ly*py }; };
+
+  function fisica(b, dt) {
+    const { fx, fy, lx, ly } = ejes(b), ht = b.track / 2;
+    const N = b.m * G / 2 * b.trac;
+    const vf = b.vx*fx + b.vy*fy;
+    const vL = vf - b.w*ht, vR = vf + b.w*ht;
+    const fmax = b.mu * N;
+    const FL = clamp(b.fuerza * (b.uL/255 - vL/b.vmax), -fmax, fmax);
+    const FR = clamp(b.fuerza * (b.uR/255 - vR/b.vmax), -fmax, fmax);
+    b.vx += (FL+FR)*fx/b.m*dt; b.vy += (FL+FR)*fy/b.m*dt;
+    b.w += (FR-FL)*ht/b.I*dt;
+    const vlat = b.vx*lx + b.vy*ly, dvmax = b.mu*G*b.trac*dt;
+    const dv = -clamp(vlat, -dvmax, dvmax); b.vx += dv*lx; b.vy += dv*ly;
+    const dwmax = b.giroEscala * b.mu*b.m*G*b.trac*(b.base/2)/b.I*dt;
+    b.w -= clamp(b.w, -dwmax, dwmax);
+    b.vx *= 1 - 0.4*dt; b.vy *= 1 - 0.4*dt;
+    b.x += b.vx*dt; b.y += b.vy*dt; b.th += b.w*dt;
+  }
+
+  function choque(A, B) {
+    const ca = esquinas(A), cb = esquinas(B), ea = ejes(A), eb = ejes(B);
+    const axes = [[ea.fx,ea.fy],[ea.lx,ea.ly],[eb.fx,eb.fy],[eb.lx,eb.ly]];
+    let dmin = 1e9, n = null;
+    for (const [ax, ay] of axes) {
+      const pa = ca.map(p => p.x*ax + p.y*ay), pb = cb.map(p => p.x*ax + p.y*ay);
+      const o = Math.min(Math.max(...pa) - Math.min(...pb), Math.max(...pb) - Math.min(...pa));
+      if (o <= 0) return null;
+      if (o < dmin) { dmin = o; n = [ax, ay]; }
+    }
+    if ((B.x-A.x)*n[0] + (B.y-A.y)*n[1] < 0) n = [-n[0], -n[1]];
+    const dentro = (b,p) => { const e = ejes(b), dx = p.x-b.x, dy = p.y-b.y, h = b.L/2 + 1e-6;
+      return Math.abs(dx*e.fx + dy*e.fy) <= h && Math.abs(dx*e.lx + dy*e.ly) <= h; };
+    let pts = cb.filter(p => dentro(A,p)).concat(ca.filter(p => dentro(B,p)));
+    if (!pts.length) pts = [{ x:(A.x+B.x)/2, y:(A.y+B.y)/2 }];
+    const p = { x: pts.reduce((s,q)=>s+q.x,0)/pts.length, y: pts.reduce((s,q)=>s+q.y,0)/pts.length };
+    const tot = A.m + B.m;
+    A.x -= n[0]*dmin*B.m/tot; A.y -= n[1]*dmin*B.m/tot;
+    B.x += n[0]*dmin*A.m/tot; B.y += n[1]*dmin*A.m/tot;
+    const rA = { x:p.x-A.x, y:p.y-A.y }, rB = { x:p.x-B.x, y:p.y-B.y };
+    const vA = { x:A.vx - A.w*rA.y, y:A.vy + A.w*rA.x }, vB = { x:B.vx - B.w*rB.y, y:B.vy + B.w*rB.x };
+    const vr = { x:vB.x-vA.x, y:vB.y-vA.y }, vn = vr.x*n[0] + vr.y*n[1];
+    const cr = (r,d) => r.x*d[1] - r.y*d[0];
+    const aplica = (j,d) => {
+      A.vx -= j*d[0]/A.m; A.vy -= j*d[1]/A.m; A.w -= cr(rA,d)*j/A.I;
+      B.vx += j*d[0]/B.m; B.vy += j*d[1]/B.m; B.w += cr(rB,d)*j/B.I;
+    };
+    const k = d => 1/A.m + 1/B.m + cr(rA,d)**2/A.I + cr(rB,d)**2/B.I;
+    let jn = 0;
+    if (vn < 0) { jn = -(1.05)*vn/k(n); aplica(jn, n); }
+    const t = [-n[1], n[0]], vt = vr.x*t[0] + vr.y*t[1];
+    aplica(clamp(-vt/k(t), -0.4*jn, 0.4*jn), t);
+    const alFrente = b => { const e = ejes(b); return (p.x-b.x)*e.fx + (p.y-b.y)*e.fy > b.L/2 - 0.012; };
+    const fa = alFrente(A), fb = alFrente(B);
+    if (fa && !fb) { B.tracSig = 1 - A.cuchilla; A.tracSig = 1 + A.cuchilla*0.5; }
+    if (fb && !fa) { A.tracSig = 1 - B.cuchilla; B.tracSig = 1 + B.cuchilla*0.5; }
+    return p;
+  }
+
+  /* ===================== SENSORES SIMULADOS ===================== */
+  function rayoCaja(ox, oy, dx, dy, b) {
+    const e = ejes(b), rx = ox-b.x, ry = oy-b.y;
+    const o = [rx*e.fx + ry*e.fy, rx*e.lx + ry*e.ly], d = [dx*e.fx + dy*e.fy, dx*e.lx + dy*e.ly];
+    let t0 = -1e9, t1 = 1e9; const h = b.L/2;
+    for (let i = 0; i < 2; i++) {
+      if (Math.abs(d[i]) < 1e-12) { if (Math.abs(o[i]) > h) return null; continue; }
+      let a = (-h-o[i])/d[i], c = (h-o[i])/d[i]; if (a > c) [a,c] = [c,a];
+      t0 = Math.max(t0,a); t1 = Math.min(t1,c); if (t0 > t1) return null;
+    }
+    return t1 < 0 ? null : Math.max(t0, 0);
+  }
+  function rayoCirculo(ox, oy, dx, dy, cx, cy, r) {
+    const fx = ox-cx, fy = oy-cy, b = fx*dx + fy*dy, c = fx*fx + fy*fy - r*r, h = b*b - c;
+    if (h < 0) return null; const t = -b - Math.sqrt(h); return t >= 0 ? t : null;
+  }
+  const GENTE = Array.from({ length:12 }, (_, i) => ({ a: i*Math.PI/6 + 0.2, r: R + 0.35 }));
+
+  /* lee todos los sensores del cuerpo b y arma los sectores, igual que sensoresLeer() */
+  function leerSensores(mundo, b, otro) {
+    for (let k = 0; k < 4; k++) { b.verSector[k] = false; b.lineaSector[k] = false; b.distSector[k] = DIST_LEJOS; }
+    b.hayLinea = false;
+    for (let i = 0; i < b.sensores.length; i++) {
+      const s = b.sensores[i];
+      let v;
+      if (s.rol === ROL.LINEA) {
+        const p = aMundo(b, s.x/1000, s.y/1000), d = Math.hypot(p.x, p.y);
+        const blanco = d >= R - BORDE;
+        if (s.tipo === TIPO.QTR_RC)      v = Math.round((blanco ? 150 : 2500) * rnd(0.9, 1.1));
+        else if (s.tipo === TIPO.ANA_MAYOR) v = Math.round((blanco ? 900 : 150) * rnd(0.95, 1.05));
+        else                              v = Math.round((blanco ? 150 : 800) * rnd(0.95, 1.05));
+      } else {
+        const p = aMundo(b, s.x/1000, s.y/1000), alc = alcanceDe(s, b.fis);
+        let dist = null;
+        const cono = b.fis.cono ?? 8;                        // medio angulo del haz, en grados
+        for (const da of [-cono, -cono/2, 0, cono/2, cono]) {
+          const a = b.th + (s.ang + da) * Math.PI/180, dx = Math.cos(a), dy = Math.sin(a);
+          let t = rayoCaja(p.x, p.y, dx, dy, otro);
+          if (mundo.gente) for (const g of GENTE) {
+            const tg = rayoCirculo(p.x, p.y, dx, dy, Math.cos(g.a)*g.r, Math.sin(g.a)*g.r, 0.15);
+            if (tg !== null && (t === null || tg < t)) t = tg;
+          }
+          if (t !== null && t <= alc && (dist === null || t < dist)) dist = t;
+        }
+        if (daDistancia(s.tipo))      v = dist === null ? DIST_LEJOS : Math.round(dist * 1000);
+        else if (s.tipo === TIPO.DIG_ALTO)  v = dist === null ? 0 : 1;
+        else if (s.tipo === TIPO.DIG_BAJO)  v = dist === null ? 1 : 0;
+        else if (s.tipo === TIPO.ANA_MAYOR) v = dist === null ? 40 : Math.round(900 - dist*1000);
+        else                                v = dist === null ? 900 : Math.round(dist*1000);
+      }
+      const d = evalua(s, v);
+      b.valor[i] = v; b.detecta[i] = d;
+      if (s.rol === ROL.LINEA) { if (d) { b.hayLinea = true; b.lineaSector[s.sector] = true; } }
+      else if (d) {
+        b.verSector[s.sector] = true;
+        if (daDistancia(s.tipo) && v < b.distSector[s.sector]) b.distSector[s.sector] = v;
+      }
+    }
+    return b;
+  }
+
+  /* mismo calculo de rumbo que calcularRumbo() del firmware */
+  function calcularRumbo(b, P) {
+    let sx = 0, sy = 0, n = 0;
+    for (let i = 0; i < b.sensores.length; i++) {
+      const s = b.sensores[i];
+      if (s.rol !== ROL.OPONENTE || !b.detecta[i]) continue;
+      const d = daDistancia(s.tipo) ? b.valor[i] : P.DIST_NOMINAL;
+      const a = s.ang * Math.PI/180;
+      sx += s.x + d*Math.cos(a); sy += s.y + d*Math.sin(a);
+      n++;
+    }
+    b.veRival = n > 0;
+    if (n) b.rumbo = Math.round(Math.atan2(sy/n, sx/n) * 180/Math.PI);
+  }
+
+  /* ===================== EL PROGRAMA (copia del .ino) ===================== */
+  function* programa(io, P, modo) {
+    const b = io.b;
+    let ultimo = DER;
+    const leer = () => { io.sense(); calcularRumbo(b, P); if (b.rumbo > 10) ultimo = IZQ; if (b.rumbo < -10) ultimo = DER; };
+    const seguir = () => io.permitido();
+
+    function* moverPor(vL, vR, ms, mirarLinea, verDesde) {
+      const t0 = io.t; io.motors(vL, vR);
+      while (io.t - t0 < ms) {
+        if (!seguir()) return 3;
+        leer();
+        if (mirarLinea && b.hayLinea) return 2;
+        if (verDesde >= 0 && io.t - t0 >= verDesde && b.verSector[SEC.FRENTE]) return 1;
+        yield;
+      }
+      return 0;
+    }
+    function* escapar() {
+      io.estado = 2;
+      let h = ultimo;
+      if (b.lineaSector[SEC.IZQ] && !b.lineaSector[SEC.DER]) h = DER;
+      else if (b.lineaSector[SEC.DER] && !b.lineaSector[SEC.IZQ]) h = IZQ;
+      const v = b.lineaSector[SEC.ATRAS] ? P.VEL_ESCAPE : -P.VEL_ESCAPE;
+      if ((yield* moverPor(v, v, P.T_RETROCESO, false, -1)) === 3) return;
+      yield* moverPor(h*P.VEL_ESCAPE, -h*P.VEL_ESCAPE, P.T_ESCAPE, false, P.T_ESCAPE/2);
+    }
+    function* giroApertura(h, t) { ultimo = h; yield* moverPor(h*P.VEL_GIRO, -h*P.VEL_GIRO, t, true, Math.floor(t*P.PCT_GIRO_CIEGO/100)); }
+    function* flanqueo(h) {
+      ultimo = -h;
+      if ((yield* moverPor(h*P.VEL_GIRO, -h*P.VEL_GIRO, P.T_GIRO_45, true, -1)) !== 0) return;
+      const inter = Math.floor(P.VEL_ATAQUE*P.PCT_ARCO_INTERIOR/100);
+      if (h === IZQ) yield* moverPor(P.VEL_ATAQUE, inter, P.T_ARCO, true, 0);
+      else           yield* moverPor(inter, P.VEL_ATAQUE, P.T_ARCO, true, 0);
+    }
+
+    io.estado = 1;
+    switch (modo) {
+      case 1: yield* moverPor(P.VEL_ATAQUE, P.VEL_ATAQUE, P.T_DIRECTO, true, -1); break;
+      case 2: yield* giroApertura(IZQ, P.T_GIRO_90); break;
+      case 3: yield* giroApertura(DER, P.T_GIRO_90); break;
+      case 4: yield* giroApertura(DER, P.T_GIRO_180); break;
+      case 5: yield* flanqueo(IZQ); break;
+      case 6: yield* flanqueo(DER); break;
+      case 7: yield* giroApertura(IZQ, P.T_GIRO_180); break;
+      default:
+        leer();
+        if (b.verSector[SEC.FRENTE]) break;
+        if (b.verSector[SEC.IZQ] && !b.verSector[SEC.DER]) yield* giroApertura(IZQ, P.T_GIRO_90);
+        else if (b.verSector[SEC.DER] && !b.verSector[SEC.IZQ]) yield* giroApertura(DER, P.T_GIRO_90);
+        else yield* giroApertura(DER, P.T_GIRO_180);
+    }
+
+    while (seguir()) {
+      leer();
+      if (b.hayLinea) { yield* escapar(); continue; }
+      if (b.veRival) {
+        const a = Math.abs(b.rumbo);
+        if (a <= P.ANG_ATAQUE) {
+          io.estado = 3;
+          const k = Math.min(a, P.ANG_CORRECCION_PLENA);
+          const dentro = Math.floor(P.VEL_ATAQUE * (100 - (100-P.PCT_CORRECCION)*k/P.ANG_CORRECCION_PLENA) / 100);
+          if (b.rumbo > 0) io.motors(dentro, P.VEL_ATAQUE);
+          else             io.motors(P.VEL_ATAQUE, dentro);
+        } else {
+          io.estado = 4;
+          const h = b.rumbo > 0 ? IZQ : DER;
+          io.motors(h*P.VEL_GIRO, -h*P.VEL_GIRO);
+        }
+        yield; continue;
+      }
+      io.estado = 5;
+      if (P.BUSCAR_GIRANDO) io.motors(ultimo*P.VEL_BUSQUEDA, -ultimo*P.VEL_BUSQUEDA);
+      else                  io.motors(P.VEL_AVANCE, P.VEL_AVANCE);
+      yield;
+    }
+    io.motors(0, 0);
+  }
+
+  /* ---------- rivales de practica ---------- */
+  function* rivalQuieto(io) { io.estado = 0; while (true) { io.motors(0,0); yield; } }
+  function* rivalEmbestida(io) {
+    const b = io.b;
+    while (true) {
+      io.sense();
+      if (b.hayLinea) {
+        io.estado = 2; let t0 = io.t; io.motors(-255,-255); while (io.t-t0 < 200) yield;
+        t0 = io.t; io.motors(255,-255); while (io.t-t0 < 260) yield;
+      } else { io.estado = b.verSector[0] ? 3 : 5; io.motors(255,255); yield; }
+    }
+  }
+  function* rivalGirando(io, P) {
+    const b = io.b;
+    while (true) {
+      io.sense(); calcularRumbo(b, P);
+      if (b.hayLinea) { io.estado = 2; const t0 = io.t; io.motors(-255,-255); while (io.t-t0 < 220) yield; }
+      else if (b.veRival && Math.abs(b.rumbo) <= 60) { io.estado = 3; io.motors(255,255); yield; }
+      else if (b.veRival) { io.estado = 4; const h = b.rumbo > 0 ? -1 : 1; io.motors(h*200,-h*200); yield; }
+      else { io.estado = 5; io.motors(170,-170); yield; }
+    }
+  }
+  const RIVALES = { quieto:"Quieto (bloque)", embestida:"Embestida recta", girando:"Busca girando", mismo:"Mismo programa que el tuyo" };
+
+  const POS = {
+    frente:   { nombre:"De frente", th:0 },
+    izq:      { nombre:"De lado (rival a tu izquierda)", th:-90 },
+    der:      { nombre:"De lado (rival a tu derecha)", th:90 },
+    espaldas: { nombre:"De espaldas", th:180 },
+    azar:     { nombre:"Al azar", th:null },
+  };
+
+  /* ===================== MUNDO ===================== */
+  function crearMundo(cfg) {
+    const sens = cfg.sensores || SENSORES_DEF;
+    const m = {
+      cfg, t:0, gente: !!cfg.gente, fin:null, sensores: sens,
+      A: cuerpo(cfg.fis, "tú", sens), B: cuerpo(cfg.fisRival || cfg.fis, "rival", sens),
+    };
+    const sep = 0.107, jit = cfg.jitter ? 1 : 0;
+    const pos = POS[cfg.pos] || POS.frente;
+    m.A.x = -sep + jit*rnd(-0.005,0.005); m.A.y = jit*rnd(-0.02,0.02);
+    m.A.th = ((pos.th === null ? rnd(-180,180) : pos.th) + jit*rnd(-6,6)) * Math.PI/180;
+    m.B.x = sep + jit*rnd(-0.005,0.005); m.B.y = jit*rnd(-0.02,0.02);
+    m.B.th = (180 + jit*rnd(-8,8)) * Math.PI/180;
+
+    const mkIO = (b, otro, retraso) => {
+      const io = { t:-retraso, estado:0, b,
+        motors: (l,r) => { b.uL = clamp(Math.round(l),-255,255); b.uR = clamp(Math.round(r),-255,255); },
+        sense: () => leerSensores(m, b, otro),
+        permitido: () => !m.fin };
+      return io;
+    };
+    m.ioA = mkIO(m.A, m.B, jit ? Math.round(rnd(0,12)) : 0);
+    m.ioB = mkIO(m.B, m.A, jit ? Math.round(rnd(0,12)) : 0);
+    m.gA = programa(m.ioA, cfg.P, cfg.modo);
+    const t = cfg.rival;
+    m.gB = t === "quieto" ? rivalQuieto(m.ioB) : t === "embestida" ? rivalEmbestida(m.ioB)
+         : t === "girando" ? rivalGirando(m.ioB, cfg.P) : programa(m.ioB, cfg.P, cfg.modoRival ?? 0);
+    return m;
+  }
+
+  function paso(m) {
+    if (m.fin) return;
+    const ms = DT * 1000;
+    for (const [io, g] of [[m.ioA, m.gA], [m.ioB, m.gB]]) {
+      if (io.t >= 0) { leerSensores(m, io.b, io.b === m.A ? m.B : m.A); g.next(); }
+      io.t += ms;
+    }
+    for (const b of [m.A, m.B]) { b.trac = b.tracSig; b.tracSig = 1; fisica(b, DT); }
+    const p = choque(m.A, m.B);
+    if (p) { m.puntoChoque = p; } else m.puntoChoque = null;
+    m.t += DT;
+    if (Math.round(m.t*1000) % 30 === 0) for (const b of [m.A, m.B]) { b.rastro.push([b.x,b.y]); if (b.rastro.length > 200) b.rastro.shift(); }
+    const outA = Math.hypot(m.A.x,m.A.y) > R, outB = Math.hypot(m.B.x,m.B.y) > R;
+    if (outA || outB) m.fin = outA && outB ? "empate" : outA ? "pierdes" : "ganas";
+    else if (m.t >= (m.cfg.limite || 30)) m.fin = "tiempo";
+  }
+
+  function correrRound(cfg) { const m = crearMundo(cfg); while (!m.fin) paso(m); return { fin:m.fin, t:m.t }; }
+
+  return { G, DT, R, BORDE, TIPO, NOMBRE_TIPO, UNIDAD, ROL, SEC, NOMBRE_SEC, DIST_LEJOS, QTR_TOPE,
+           ESTADOS, APERTURAS, PARAM_DEF, FIS_DEF, SENSORES_DEF, RIVALES, POS,
+           daDistancia, evalua, alcanceDe, crearMundo, paso, correrRound, esquinas, aMundo, ejes, leerSensores };
+})();
+
+
+
+/* ===================== UTILIDADES ===================== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const T = SIM.TIPO;
+
+$$(".tab").forEach(b => b.onclick = () => {
+  $$(".tab").forEach(x => x.classList.toggle("on", x === b));
+  $$(".vista").forEach(v => v.classList.toggle("on", v.id === "v-" + b.dataset.v));
+  redibujaTodo();
+});
+
+function ajusta(cv, alto) {
+  const r = window.devicePixelRatio || 1, w = cv.clientWidth;
+  if (cv.width !== Math.round(w*r) || cv.height !== Math.round(alto*r)) { cv.width = Math.round(w*r); cv.height = Math.round(alto*r); }
+  const c = cv.getContext("2d"); c.setTransform(r,0,0,r,0,0);
+  return { c, w, h: alto };
+}
+const COLOR_ROL = [ "#58a6ff", "#ffffff" ];   // oponente, linea
+
+/* ===================== ESTADO GLOBAL ===================== */
+let sensores = SIM.SENSORES_DEF.map(s => ({ ...s }));   // los que se muestran y se simulan
+let info = null;                                        // datos de la placa conectada
+const V = { ms:0, estado:0, modo:0, start:0, kill:1, dip:0, vL:0, vR:0, val:[], det:[], rumbo:0, ve:false };
+
+/* ===================== PUERTO SERIE ===================== */
+let puerto = null, lector = null, escritor = null, bufLinea = "";
+let hist = [], nMsg = 0, grabando = false, grabado = [];
+let cfgRobot = null, midiendo = null, muestras = [], negro = null, blanco = null;
+
+function log(t, col) {
+  const el = $("#logVivo"), d = document.createElement("div");
+  if (col) d.style.color = col;
+  d.textContent = t; el.appendChild(d);
+  while (el.childElementCount > 250) el.firstChild.remove();
+  el.scrollTop = el.scrollHeight;
+}
+
+async function conectar() {
+  if (!("serial" in navigator)) {
+    $("#notaCon").innerHTML = "<b style='color:var(--mal)'>Este navegador no tiene Web Serial.</b> Usa Chrome, Edge u Opera, y abre el archivo directamente (doble clic), no dentro de otra página.";
+    return;
+  }
+  try {
+    puerto = await navigator.serial.requestPort();
+    await puerto.open({ baudRate: 115200, bufferSize: 8192 });
+    escritor = puerto.writable.getWriter();
+    $("#btnCon").disabled = true; $("#btnDes").disabled = false;
+    $("#btnPide").disabled = false; $("#btnPRobot").disabled = false; $("#btnDelRobot").disabled = false;
+    $("#estadoCon").textContent = "Conectado"; $("#estadoCon").className = "pill ok";
+    $("#notaCon").textContent = "Conectado a 115200 baudios.";
+    log("— conectado —", "var(--ok)");
+    manda("?"); setTimeout(() => manda("?"), 600);     // por si la placa apenas despertaba
+    leerPuerto();
+  } catch (e) { log("Error: " + e.message, "var(--mal)"); }
+}
+
+async function leerPuerto() {
+  const dec = new TextDecoderStream();
+  puerto.readable.pipeTo(dec.writable).catch(() => {});
+  lector = dec.readable.getReader();
+  try {
+    while (true) {
+      const { value, done } = await lector.read();
+      if (done) break;
+      bufLinea += value;
+      let i;
+      while ((i = bufLinea.indexOf("\n")) >= 0) { procesa(bufLinea.slice(0,i).trim()); bufLinea = bufLinea.slice(i+1); }
+      if (bufLinea.length > 4000) bufLinea = "";
+    }
+  } catch (e) { log("Lectura cortada: " + e.message, "var(--aviso)"); }
+  desconectar(true);
+}
+
+async function desconectar(auto) {
+  try { if (lector) await lector.cancel(); } catch (e) {}
+  try { if (escritor) escritor.releaseLock(); } catch (e) {}
+  try { if (puerto) await puerto.close(); } catch (e) {}
+  puerto = lector = escritor = null;
+  $("#btnCon").disabled = false; $("#btnDes").disabled = true;
+  $("#btnPide").disabled = true; $("#btnPRobot").disabled = true; $("#btnDelRobot").disabled = true;
+  $("#estadoCon").textContent = "Sin conectar"; $("#estadoCon").className = "pill mal";
+  if (!auto) log("— desconectado —", "var(--aviso)");
+}
+
+async function manda(txt) {
+  if (!escritor) return;
+  try { await escritor.write(new TextEncoder().encode(txt + "\n")); } catch (e) { log("No se pudo mandar: " + e.message, "var(--mal)"); }
+}
+
+/* ---------- interpreta las lineas que manda la placa ---------- */
+let sensoresRobot = [];
+function procesa(l) {
+  if (!l) return;
+  nMsg++;
+  const t = l[0];
+  if (t === "D") {
+    const p = l.split(",");
+    if (p.length < 9) return;
+    const n = i => Number(p[i]);
+    V.ms = n(1); V.estado = n(2); V.modo = n(3); V.start = n(4); V.kill = n(5);
+    V.dip = n(6); V.vL = n(7); V.vR = n(8);
+    V.val = p.slice(9).map(Number);
+    V.det = sensores.map((s,i) => SIM.evalua(s, V.val[i]));
+    calculaRumboVivo();
+    hist.push({ t: performance.now(), val: V.val.slice(), vL: V.vL, vR: V.vR });
+    const lim = performance.now() - 12000;
+    while (hist.length && hist[0].t < lim) hist.shift();
+    if (grabando) grabado.push([V.ms, V.estado, V.modo, V.start, V.kill, V.dip, V.vL, V.vR, ...V.val]);
+    if (midiendo) muestras.push(V.val.slice());
+    pintaVivo();
+  } else if (t === "I") {
+    const p = l.split(",");
+    info = { nombre:p[1], version:p[2], placa:p[3], arq:p[4], n:Number(p[5]), adc:Number(p[6]) };
+    sensoresRobot = [];
+    $("#estadoPlaca").style.display = "";
+    $("#estadoPlaca").textContent = info.placa + " · " + info.arq + " · fw " + info.version;
+    log(l, "var(--ve)");
+  } else if (t === "S") {
+    const p = l.split(",");
+    const idx = Number(p[1]);
+    sensoresRobot[idx] = {
+      id:p[2], nombre:p[3], tipo: Math.max(0, SIM.NOMBRE_TIPO.indexOf(p[4])),
+      rol:Number(p[6]), sector:Number(p[7]), umbral:Number(p[8]),
+      x:Number(p[9]), y:Number(p[10]), ang:Number(p[11]),
+    };
+    if (info && sensoresRobot.filter(Boolean).length === info.n) {
+      sensores = sensoresRobot.map(s => ({ ...s }));
+      armaTablaSensores(); armaEditor(); armaLeyenda(); armaCalTabla();
+      reset(); redibujaTodo();
+      log("sensores del robot: " + sensores.length, "var(--ve)");
+    }
+  } else if (t === "P") {
+    cfgRobot = {};
+    l.slice(2).split(",").forEach(kv => { const [k,v] = kv.split("="); if (k) cfgRobot[k] = Number(v); });
+    log(l, "var(--mo)");
+  } else if (t === "E") {
+    log(l.slice(2), "var(--ac)");
+  } else log(l);
+}
+
+/* mismo calculo que calcularRumbo() del firmware */
+function calculaRumboVivo() {
+  let sx = 0, sy = 0, n = 0;
+  const DN = cfgRobot?.DIST_NOMINAL ?? 150;
+  sensores.forEach((s,i) => {
+    if (s.rol !== 0 || !V.det[i]) return;
+    const d = SIM.daDistancia(s.tipo) ? V.val[i] : DN;
+    const a = s.ang * Math.PI/180;
+    sx += s.x + d*Math.cos(a); sy += s.y + d*Math.sin(a); n++;
+  });
+  V.ve = n > 0;
+  if (n) V.rumbo = Math.round(Math.atan2(sy/n, sx/n) * 180/Math.PI);
+}
+
+/* ---------- tabla de sensores en vivo ---------- */
+function armaTablaSensores() {
+  const el = $("#tablaSensores");
+  if (!sensores.length) { el.innerHTML = '<p class="vacio">Sin sensores.</p>'; return; }
+  el.innerHTML = `<table><tr>
+      <th class="c"></th><th>Sensor</th><th>Tipo</th><th class="n">Lectura</th>
+      <th class="n">Distancia</th><th class="n">Umbral</th><th class="c">Gráfica</th></tr>` +
+    sensores.map((s,i) => `<tr>
+      <td class="c"><span class="led" id="led${i}"></span></td>
+      <td>${esc(s.nombre)}<br><span style="color:var(--txt3);font-size:11px">${SIM.NOMBRE_SEC[s.sector]} · ${s.rol ? "línea" : "rival"}</span></td>
+      <td style="font-size:11px;color:var(--txt2)">${SIM.NOMBRE_TIPO[s.tipo]}</td>
+      <td class="n" id="val${i}">—</td>
+      <td class="n" id="dis${i}">—</td>
+      <td class="n" style="width:88px">${s.tipo === T.DIG_ALTO || s.tipo === T.DIG_BAJO ? "—"
+        : `<input class="mini" type="number" data-um="${i}" value="${s.umbral}">`}</td>
+      <td class="c"><input type="checkbox" data-gr="${i}" ${i < 4 ? "checked" : ""}></td>
+    </tr>`).join("") + "</table>";
+  $$("[data-um]").forEach(inp => inp.onchange = () => {
+    const i = Number(inp.dataset.um), v = Number(inp.value);
+    sensores[i].umbral = v; manda(`U,${i},${v}`); reset();
+  });
+  $$("[data-gr]").forEach(c => c.onchange = armaLeyenda);
+}
+
+function pintaVivo() {
+  $("#vStart").textContent = V.start ? "GO (1)" : "parado (0)";
+  $("#vStart").style.color = V.start ? "var(--ok)" : "var(--txt2)";
+  $("#vKill").textContent = V.kill ? "ok (1)" : "CORTADO (0)";
+  $("#vKill").style.color = V.kill ? "var(--ok)" : "var(--mal)";
+  $("#vDip").textContent = [1,2,4].map(b => (V.dip & b) ? "ON" : "off").join(" ");
+  $("#vModo").textContent = SIM.APERTURAS[V.modo] || V.modo;
+  $("#vEstado").textContent = SIM.ESTADOS[V.estado] || V.estado;
+  $("#vRumbo").textContent = V.ve ? (V.rumbo > 0 ? V.rumbo + "° izq" : (-V.rumbo) + "° der") : "no lo ve";
+  $("#vRumbo").style.color = V.ve ? "var(--ac)" : "var(--txt2)";
+  $("#vPwm").textContent = V.vL + " / " + V.vR;
+  $("#vRec").textContent = grabado.length + " muestras";
+  const bloq = V.start === 1;
+  $("#notaMot").style.color = bloq ? "var(--mal)" : "";
+  $("#notaMot").textContent = bloq ? "Apaga el arrancador para poder probar los motores."
+    : "Levanta el robot. Solo funciona con el arrancador apagado.";
+  sensores.forEach((s,i) => {
+    const led = $("#led" + i), v = $("#val" + i), d = $("#dis" + i);
+    if (!led) return;
+    led.className = "led" + (V.det[i] ? (s.rol ? " lin" : " on") : "");
+    const u = SIM.UNIDAD[s.tipo];
+    v.textContent = (s.tipo === T.DIG_ALTO || s.tipo === T.DIG_BAJO) ? (V.val[i] ? "alto" : "bajo")
+                  : V.val[i] + (u ? " " + u : "");
+    d.textContent = SIM.daDistancia(s.tipo)
+      ? (V.val[i] >= SIM.DIST_LEJOS ? "lejos" : (V.val[i]/10).toFixed(1) + " cm") : "—";
+  });
+}
+
+setInterval(() => {
+  $("#estadoHz").textContent = nMsg + " Hz";
+  nMsg = 0;
+  if (puerto) { dibujaRobot(); dibujaGrafica(); }
+}, 1000);
+
+/* ===================== DIBUJO DEL ROBOT (en vivo) ===================== */
+function dibujaRobotEn(cv, alto, datos) {
+  if (!cv.clientWidth) return;
+  const { c, w, h } = ajusta(cv, alto);
+  c.clearRect(0,0,w,h);
+  const lado = 98;
+  const S = Math.min(w/5.4, h/4.0), cx = w/2, cy = h*0.54;
+  const mm = v => v * S / (lado/2);                       // mm del robot -> pixeles
+  const PX = (x,y) => ({ px: cx - mm(y), py: cy - mm(x) }); // y a la izquierda = -x en pantalla
+
+  // conos
+  for (let i = 0; i < sensores.length; i++) {
+    const s = sensores[i], on = datos.det[i];
+    const { px, py } = PX(s.x, s.y);
+    if (s.rol === 1) continue;
+    const a0 = (-s.ang - 90 - 9) * Math.PI/180, a1 = (-s.ang - 90 + 9) * Math.PI/180;
+    const alc = S * 1.15;
+    c.beginPath(); c.moveTo(px, py); c.arc(px, py, alc, a0, a1); c.closePath();
+    const g = c.createRadialGradient(px, py, 0, px, py, alc);
+    g.addColorStop(0, on ? COLOR_ROL[0] + "bb" : "#ffffff10");
+    g.addColorStop(1, on ? COLOR_ROL[0] + "00" : "#ffffff00");
+    c.fillStyle = g; c.fill();
+    c.strokeStyle = on ? COLOR_ROL[0] : "#262d37"; c.lineWidth = on ? 2 : 1; c.stroke();
+  }
+  // cuerpo
+  c.fillStyle = "#1c222b"; c.strokeStyle = "#39414d"; c.lineWidth = 2;
+  c.beginPath(); c.roundRect(cx - S, cy - S, S*2, S*2, 9); c.fill(); c.stroke();
+  c.fillStyle = "#39414d";
+  c.beginPath(); c.moveTo(cx-S, cy-S); c.lineTo(cx+S, cy-S); c.lineTo(cx+S*.82, cy-S-13); c.lineTo(cx-S*.82, cy-S-13); c.closePath(); c.fill();
+  c.fillStyle = "#6e7a88"; c.font = "600 11px system-ui"; c.textAlign = "center";
+  c.fillText("FRENTE", cx, cy-S-20);
+
+  // flecha del rumbo
+  if (datos.ve) {
+    const a = (-datos.rumbo - 90) * Math.PI/180, L = S*1.25;
+    c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a)*L, cy + Math.sin(a)*L);
+    c.strokeStyle = "var(--ac)"; c.strokeStyle = "#f0883e"; c.lineWidth = 3; c.stroke();
+    c.beginPath(); c.arc(cx + Math.cos(a)*L, cy + Math.sin(a)*L, 5, 0, 7); c.fillStyle = "#f0883e"; c.fill();
+  }
+
+  // puntos de cada sensor
+  for (let i = 0; i < sensores.length; i++) {
+    const s = sensores[i], on = datos.det[i], { px, py } = PX(s.x, s.y);
+    const col = s.rol ? (on ? "#ffffff" : "#4d5663") : (on ? COLOR_ROL[0] : "#39414d");
+    c.beginPath();
+    if (s.rol) c.rect(px-5, py-5, 10, 10); else c.arc(px, py, 6, 0, 7);
+    c.fillStyle = col; c.fill(); c.strokeStyle = "#0a0d12"; c.lineWidth = 2; c.stroke();
+    c.fillStyle = on ? col : "#55606d"; c.font = "600 10px system-ui";
+    c.textAlign = px < cx - S*0.5 ? "right" : px > cx + S*0.5 ? "left" : "center";
+    const dx = px < cx - S*0.5 ? -10 : px > cx + S*0.5 ? 10 : 0;
+    c.fillText(s.id, px + dx, py + (py > cy ? 16 : -10));
+  }
+
+  // barras de motores
+  for (const m of [{ v:datos.vL, x:-S*2.7 }, { v:datos.vR, x:S*2.7 }]) {
+    const px = cx + m.x, al = S*1.3, v = Math.max(-255, Math.min(255, m.v))/255;
+    c.fillStyle = "#11161d"; c.fillRect(px-7, cy-al/2, 14, al);
+    c.fillStyle = v >= 0 ? "#3fb950" : "#f85149";
+    const hh = Math.abs(v)*al/2;
+    c.fillRect(px-7, v >= 0 ? cy-hh : cy, 14, hh);
+    c.strokeStyle = "#2a313c"; c.strokeRect(px-7, cy-al/2, 14, al);
+    c.beginPath(); c.moveTo(px-10, cy); c.lineTo(px+10, cy); c.strokeStyle = "#6e7a88"; c.stroke();
+  }
+}
+const dibujaRobot = () => dibujaRobotEn($("#cvRobot"), 470, { det:V.det, vL:V.vL, vR:V.vR, ve:V.ve, rumbo:V.rumbo });
+const dibujaConf  = () => dibujaRobotEn($("#cvConf"), 420, { det:sensores.map(()=>false), vL:0, vR:0, ve:false, rumbo:0 });
+
+/* ===================== GRAFICA ===================== */
+const COLS = ["#58a6ff","#bc8cff","#39c5bb","#d29922","#ff7b72","#7ee787","#f0883e","#a5d6ff"];
+function graficados() { return $$("[data-gr]").filter(c => c.checked).map(c => Number(c.dataset.gr)); }
+function armaLeyenda() {
+  $("#legGraf").innerHTML = graficados().map(i =>
+    `<span class="pill" style="color:${COLS[i % COLS.length]}">${esc(sensores[i]?.id || i)}</span>`).join("") +
+    `<span class="pill" style="color:#f0883e">PWM izq</span><span class="pill" style="color:#3fb950">PWM der</span>`;
+}
+function dibujaGrafica() {
+  const cv = $("#cvGraf"); if (!cv.clientWidth) return;
+  const { c, w, h } = ajusta(cv, 230);
+  c.clearRect(0,0,w,h);
+  if (hist.length < 2) return;
+  const t1 = performance.now(), t0 = t1 - 12000, X = t => (t-t0)/12000*w;
+  const hS = h*0.62, hM = h-hS;
+  const idx = graficados();
+  // escala: cada sensor normalizado a su propio maximo razonable
+  const tope = i => {
+    const s = sensores[i]; if (!s) return 1024;
+    if (s.tipo === T.QTR_RC) return SIM.QTR_TOPE;
+    if (SIM.daDistancia(s.tipo)) return 800;
+    if (s.tipo === T.DIG_ALTO || s.tipo === T.DIG_BAJO) return 1;
+    return info?.adc || 1023;
+  };
+  c.strokeStyle = "#1d232c"; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(0,hS); c.lineTo(w,hS); c.stroke();
+  const yM = v => hS + hM/2 - (v/255)*(hM/2 - 6);
+  c.beginPath(); c.moveTo(0,yM(0)); c.lineTo(w,yM(0)); c.stroke();
+  c.fillStyle = "#55606d"; c.font = "10px ui-monospace,Menlo,monospace"; c.textAlign = "left";
+  c.fillText("sensores (cada uno a su escala)", 4, 12);
+  c.fillText("motores (PWM)", 4, hS + 13);
+  // umbrales
+  idx.forEach(i => {
+    const s = sensores[i]; if (!s || s.tipo === T.DIG_ALTO || s.tipo === T.DIG_BAJO) return;
+    const y = hS - Math.min(s.umbral, tope(i))/tope(i)*(hS-10) - 5;
+    c.strokeStyle = COLS[i % COLS.length] + "66"; c.setLineDash([3,3]);
+    c.beginPath(); c.moveTo(0,y); c.lineTo(w,y); c.stroke(); c.setLineDash([]);
+  });
+  const linea = (f, col, yf) => {
+    c.beginPath(); c.strokeStyle = col; c.lineWidth = 1.6;
+    hist.forEach((p,k) => { const x = X(p.t), y = yf(f(p)); k ? c.lineTo(x,y) : c.moveTo(x,y); });
+    c.stroke();
+  };
+  idx.forEach(i => linea(p => p.val[i] ?? 0, COLS[i % COLS.length],
+    v => hS - Math.min(Math.max(v,0), tope(i))/tope(i)*(hS-10) - 5));
+  linea(p => p.vL, "#f0883e", yM);
+  linea(p => p.vR, "#3fb950", yM);
+}
+
+/* ===================== CALIBRAR LA LINEA ===================== */
+function sensoresLinea() { return sensores.map((s,i) => ({ s, i })).filter(o => o.s.rol === 1 && o.s.tipo !== T.DIG_ALTO && o.s.tipo !== T.DIG_BAJO); }
+function armaCalTabla() {
+  const L = sensoresLinea();
+  $("#calTabla").innerHTML = !L.length ? '<p class="vacio">No declaraste sensores de línea analógicos.</p>'
+    : `<table><tr><th>Sensor</th><th class="n">Negro</th><th class="n">Blanco</th><th class="n">Umbral</th></tr>` +
+      L.map(o => `<tr><td>${esc(o.s.id)}</td><td class="n" id="cn${o.i}">—</td><td class="n" id="cb${o.i}">—</td>
+        <td class="n" id="cu${o.i}" style="color:var(--ac)">—</td></tr>`).join("") + "</table>";
+}
+function mide(cual) {
+  if (!puerto) return;
+  midiendo = cual; muestras = [];
+  const b = cual === "negro" ? $("#btnNegro") : $("#btnBlanco");
+  b.textContent = "Midiendo…"; b.disabled = true;
+  setTimeout(() => {
+    const prom = i => muestras.length ? Math.round(muestras.reduce((a,m) => a + (m[i] ?? 0), 0)/muestras.length) : null;
+    const r = {}; sensoresLinea().forEach(o => r[o.i] = prom(o.i));
+    if (cual === "negro") negro = r; else blanco = r;
+    sensoresLinea().forEach(o => {
+      const el = $("#" + (cual === "negro" ? "cn" : "cb") + o.i);
+      if (el) el.textContent = r[o.i] ?? "—";
+      if (negro && blanco && negro[o.i] != null && blanco[o.i] != null) {
+        const um = Math.round((negro[o.i] + blanco[o.i])/2);
+        const u = $("#cu" + o.i);
+        const poca = Math.abs(negro[o.i] - blanco[o.i]) < 150;
+        u.textContent = um + (poca ? " (poca diferencia)" : "");
+        u.dataset.v = um;
+        $("#btnAplicar").disabled = false;
+      }
+    });
+    midiendo = null; b.textContent = cual === "negro" ? "Medir negro" : "Medir blanco"; b.disabled = false;
+  }, 1500);
+}
+$("#btnNegro").onclick = () => mide("negro");
+$("#btnBlanco").onclick = () => mide("blanco");
+$("#btnAplicar").onclick = () => {
+  sensoresLinea().forEach(o => {
+    const u = $("#cu" + o.i);
+    if (!u || !u.dataset.v) return;
+    const v = Number(u.dataset.v);
+    sensores[o.i].umbral = v; manda(`U,${o.i},${v}`);
+    const inp = document.querySelector(`[data-um="${o.i}"]`); if (inp) inp.value = v;
+  });
+  log("umbrales mandados al robot", "var(--ok)");
+  reset();
+};
+
+/* ===================== BOTONES EN VIVO ===================== */
+$("#btnCon").onclick = conectar;
+$("#btnDes").onclick = () => desconectar(false);
+$("#btnPide").onclick = () => manda("?");
+$("#btnStop").onclick = () => manda("X");
+$$("[data-mot]").forEach(b => b.onclick = () => {
+  const [a,d] = b.dataset.mot.split(",").map(Number);
+  const p = Number($("#tpPwm").value), ms = Number($("#tpMs").value);
+  manda(`M,${a*p},${d*p},${ms}`);
+});
+$("#btnRec").onclick = () => {
+  grabando = !grabando;
+  $("#btnRec").textContent = grabando ? "Parar de grabar" : "Empezar a grabar";
+  $("#btnRec").classList.toggle("pri", grabando);
+  if (grabando) grabado = [];
+  $("#btnCsv").disabled = grabando || !grabado.length;
+};
+$("#btnCsv").onclick = () => {
+  const cab = ["ms","estado","modo","start","kill","dip","pwm_izq","pwm_der", ...sensores.map(s => s.id)].join(",");
+  const csv = cab + "\n" + grabado.map(r => r.join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type:"text/csv" }));
+  a.download = "minisumo_" + new Date().toISOString().slice(0,19).replace(/[:T]/g,"-") + ".csv";
+  a.click();
+};
+
+/* ===================== EDITOR DE SENSORES ===================== */
+const CAMPOS_ED = [
+  { k:"id", t:"text", w:"62px", tit:"id" },
+  { k:"nombre", t:"text", w:"", tit:"nombre" },
+  { k:"tipo", t:"sel", op:SIM.NOMBRE_TIPO, tit:"tipo" },
+  { k:"rol", t:"sel", op:["rival","línea"], tit:"rol" },
+  { k:"sector", t:"sel", op:SIM.NOMBRE_SEC, tit:"sector" },
+  { k:"umbral", t:"num", w:"70px", tit:"umbral" },
+  { k:"x", t:"num", w:"62px", tit:"x" },
+  { k:"y", t:"num", w:"62px", tit:"y" },
+  { k:"ang", t:"num", w:"62px", tit:"áng" },
+];
+function armaEditor() {
+  const el = $("#editor");
+  if (!sensores.length) { el.innerHTML = '<p class="vacio">Agrega tu primer sensor.</p>'; return; }
+  el.innerHTML = `<div style="overflow-x:auto"><table><tr>` +
+    CAMPOS_ED.map(c => `<th>${c.tit}</th>`).join("") + `<th></th></tr>` +
+    sensores.map((s,i) => `<tr>` + CAMPOS_ED.map(c => `<td>` + (
+      c.t === "sel"
+        ? `<select data-i="${i}" data-k="${c.k}" style="font-size:12px;padding:3px">` +
+          c.op.map((o,k) => `<option value="${k}" ${s[c.k] == k ? "selected" : ""}>${esc(o)}</option>`).join("") + `</select>`
+        : `<input class="mini" type="${c.t === "num" ? "number" : "text"}" data-i="${i}" data-k="${c.k}" value="${esc(s[c.k])}" ${c.w ? `style="width:${c.w}"` : ""}>`
+    ) + `</td>`).join("") +
+    `<td><button class="min pel" data-del="${i}">✕</button></td></tr>`).join("") + `</table></div>`;
+  el.querySelectorAll("[data-k]").forEach(inp => inp.onchange = () => {
+    const i = Number(inp.dataset.i), k = inp.dataset.k;
+    sensores[i][k] = (k === "id" || k === "nombre") ? inp.value : Number(inp.value);
+    trasEditar();
+  });
+  el.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
+    sensores.splice(Number(b.dataset.del), 1); armaEditor(); trasEditar();
+  });
+}
+function trasEditar() {
+  armaTablaSensores(); armaLeyenda(); armaCalTabla(); generaCodigo();
+  V.det = sensores.map(() => false);
+  reset(); redibujaTodo();
+}
+$("#btnAdd").onclick = () => {
+  sensores.push({ id:"s" + (sensores.length+1), nombre:"Sensor " + (sensores.length+1),
+                  tipo:T.DIG_ALTO, rol:0, sector:0, umbral:0, x:46, y:0, ang:0 });
+  armaEditor(); trasEditar();
+};
+$("#btnDefault").onclick = () => { sensores = SIM.SENSORES_DEF.map(s => ({ ...s })); armaEditor(); trasEditar(); };
+$("#btnDelRobot").onclick = () => { manda("?"); };
+$("#btnUsaSim").onclick = () => { reset(); $$(".tab").find(b => b.dataset.v === "sim").click(); };
+$("#btnCopia").onclick = async () => {
+  try { await navigator.clipboard.writeText($("#codigoCfg").textContent); $("#btnCopia").textContent = "¡Copiado!"; }
+  catch (e) { $("#btnCopia").textContent = "Selecciona y copia a mano"; }
+  setTimeout(() => $("#btnCopia").textContent = "Copiar", 1800);
+};
+
+const NOM_TIPO_C = ["SENS_DIG_ALTO","SENS_DIG_BAJO","SENS_ANA_MAYOR","SENS_ANA_MENOR",
+                    "SENS_SHARP_41","SENS_SHARP_21","SENS_QTR_RC","SENS_QTR_ANA","SENS_HCSR04"];
+const NOM_SEC_C = ["SEC_FRENTE","SEC_IZQ","SEC_DER","SEC_ATRAS"];
+function generaCodigo() {
+  const pad = (s,n) => String(s).padEnd(n);
+  const cuerpo = sensores.map(s =>
+    `  { ${pad('"' + s.id + '",', 7)}${pad('"' + s.nombre + '",', 22)}` +
+    `${pad(NOM_TIPO_C[s.tipo] + ",", 16)}${pad(s.rol ? "ROL_LINEA," : "ROL_OPONENTE,", 14)}` +
+    `${pad(NOM_SEC_C[s.sector] + ",", 12)}${pad("PIN,", 5)}${pad("-1,", 4)}` +
+    `${String(s.umbral).padStart(5)}, ${String(s.x).padStart(4)}, ${String(s.y).padStart(4)}, ${String(s.ang).padStart(4)} },`
+  ).join("\n");
+  $("#codigoCfg").textContent =
+    "Sensor SENSORES[] = {\n" +
+    "  //  id      nombre                tipo            rol           sector      pin  pin2 umbral    x     y   ang\n" +
+    cuerpo + "\n};\nconst uint8_t N_SENSORES = sizeof(SENSORES) / sizeof(SENSORES[0]);\n\n" +
+    "// Cambia cada PIN por el pin real donde conectaste ese sensor.";
+}
+
+/* ===================== SIMULADOR ===================== */
+let P = { ...SIM.PARAM_DEF }, F = { ...SIM.FIS_DEF }, mundo = null, corriendo = false, velSim = 1;
+
+function campos(cont, obj, cb) {
+  cont.innerHTML = "";
+  for (const k of Object.keys(obj)) {
+    const d = document.createElement("div");
+    d.innerHTML = `<label title="${k}">${k}</label><input type="number" step="any" data-k="${k}" value="${obj[k]}">`;
+    d.querySelector("input").onchange = e => { obj[k] = Number(e.target.value); cb && cb(); };
+    cont.appendChild(d);
+  }
+}
+campos($("#campP"), P, () => reset());
+campos($("#campF"), F, () => reset());
+$("#btnPDef").onclick = () => { P = { ...SIM.PARAM_DEF }; campos($("#campP"), P, reset); reset(); };
+$("#btnPRobot").onclick = () => {
+  if (!cfgRobot) { manda("?"); return; }
+  for (const k of Object.keys(P)) if (k in cfgRobot) P[k] = cfgRobot[k];
+  campos($("#campP"), P, reset); reset();
+};
+
+SIM.APERTURAS.forEach((a,i) => $("#sModo").add(new Option(a,i)));
+Object.entries(SIM.RIVALES).forEach(([k,v]) => $("#sRival").add(new Option(v,k)));
+Object.entries(SIM.POS).forEach(([k,v]) => $("#sPos").add(new Option(v.nombre,k)));
+$("#sPos").add(new Option("Donde yo los ponga (arrastrando)", "libre"));
+$("#sRival").value = "girando";
+
+const cfgSim = () => ({
+  P, fis:F, fisRival:F, sensores, modo:Number($("#sModo").value), modoRival:0,
+  rival:$("#sRival").value, pos:$("#sPos").value, jitter:$("#sJitter").checked,
+  gente:$("#sGente").checked, limite:Number($("#sLimite").value),
+});
+
+/* ---- posiciones libres ---- */
+let manual = null;
+const libre = () => $("#sPos").value === "libre";
+const limR = b => SIM.R - b.L * Math.SQRT1_2;
+function guardaManual(m) { manual = { A:{x:m.A.x,y:m.A.y,th:m.A.th}, B:{x:m.B.x,y:m.B.y,th:m.B.th} }; }
+function aplicaManual(m, jit) {
+  if (!manual) return;
+  const r = (a,b) => a + Math.random()*(b-a);
+  for (const k of ["A","B"]) {
+    const q = manual[k], b = m[k];
+    b.x = q.x + (jit ? r(-0.005,0.005) : 0);
+    b.y = q.y + (jit ? r(-0.005,0.005) : 0);
+    b.th = q.th + (jit ? r(-0.08,0.08) : 0);
+    b.vx = b.vy = b.w = 0; b.rastro.length = 0;
+  }
+}
+function pintaCampos() {
+  $("#posLibre").style.display = libre() ? "" : "none";
+  if (!manual) return;
+  const g = (id,v) => { const e = $(id); if (document.activeElement !== e) e.value = v; };
+  g("#pAx",(manual.A.x*100).toFixed(1)); g("#pAy",(manual.A.y*100).toFixed(1)); g("#pAa",Math.round(manual.A.th*180/Math.PI));
+  g("#pBx",(manual.B.x*100).toFixed(1)); g("#pBy",(manual.B.y*100).toFixed(1)); g("#pBa",Math.round(manual.B.th*180/Math.PI));
+}
+function leeCampos() {
+  if (!manual) return;
+  const n = (id,d) => { const v = Number($(id).value); return Number.isFinite(v) ? v : d; };
+  manual.A.x = n("#pAx",0)/100; manual.A.y = n("#pAy",0)/100; manual.A.th = n("#pAa",0)*Math.PI/180;
+  manual.B.x = n("#pBx",0)/100; manual.B.y = n("#pBy",0)/100; manual.B.th = n("#pBa",0)*Math.PI/180;
+  for (const k of ["A","B"]) {
+    const q = manual[k], d = Math.hypot(q.x,q.y), lim = limR(mundo[k]);
+    if (d > lim) { q.x *= lim/d; q.y *= lim/d; }
+  }
+  reset();
+}
+["#pAx","#pAy","#pAa","#pBx","#pBy","#pBa"].forEach(id => $(id).onchange = leeCampos);
+$("#btnIntercambia").onclick = () => { if (!manual) return; const t = manual.A; manual.A = manual.B; manual.B = t; pintaCampos(); reset(); };
+$("#btnDesdeSalida").onclick = () => { const m = SIM.crearMundo({ ...cfgSim(), pos:"frente", jitter:false }); guardaManual(m); pintaCampos(); reset(); };
+
+function reset() {
+  mundo = SIM.crearMundo(cfgSim());
+  if (libre()) { if (!manual) guardaManual(mundo); else aplicaManual(mundo, $("#sJitter").checked); }
+  pintaCampos();
+  $("#sFin").textContent = "—"; $("#sFin").className = "pill";
+  $("#simSens").textContent = sensores.length + " sensores";
+  corriendo = false; $("#sPlay").textContent = "Correr";
+  dibujaSim();
+}
+function unRound(cfg) {
+  const m = SIM.crearMundo(cfg);
+  if (cfg.pos === "libre") aplicaManual(m, cfg.jitter);
+  while (!m.fin) SIM.paso(m);
+  return { fin:m.fin, t:m.t };
+}
+["sModo","sRival","sPos","sJitter","sGente","sLimite"].forEach(id => $("#" + id).onchange = reset);
+$("#sReset").onclick = reset;
+$("#sPaso").onclick = () => { for (let i = 0; i < 25; i++) SIM.paso(mundo); dibujaSim(); };
+$("#sPlay").onclick = () => {
+  if (mundo.fin) reset();
+  corriendo = !corriendo;
+  $("#sPlay").textContent = corriendo ? "Pausa" : "Correr";
+};
+$("#sVel").oninput = e => { velSim = [0.25,1,2,4,8][e.target.value]; $("#sVelTxt").textContent = velSim + "×"; };
+
+function bucle() {
+  if (corriendo && mundo && !mundo.fin) {
+    const n = Math.round(1/60/SIM.DT*velSim);
+    for (let i = 0; i < n && !mundo.fin; i++) SIM.paso(mundo);
+    if (mundo.fin) {
+      corriendo = false; $("#sPlay").textContent = "Correr";
+      const t = { ganas:["Ganas","ok"], pierdes:["Pierdes","mal"], empate:["Empate","av"], tiempo:["Se acabó el tiempo","av"] }[mundo.fin];
+      $("#sFin").textContent = t[0]; $("#sFin").className = "pill " + t[1];
+    }
+  }
+  if (mundo) dibujaSim();
+  requestAnimationFrame(bucle);
+}
+
+let vista = null, arrastre = null;
+function dibujaSim() {
+  const cv = $("#cvSim"); if (!cv.clientWidth || !mundo) return;
+  const { c, w, h } = ajusta(cv, 560);
+  c.clearRect(0,0,w,h);
+  const es = Math.min(w,h)/(SIM.R*2.5), cx = w/2, cy = h/2;
+  vista = { esc:es, cx, cy };
+  const X = x => cx + x*es, Y = y => cy - y*es;
+  c.fillStyle = "#0a0d12"; c.fillRect(0,0,w,h);
+  if ($("#sGente").checked) for (let i = 0; i < 12; i++) {
+    const a = i*Math.PI/6 + 0.2, r = SIM.R + 0.35;
+    c.beginPath(); c.arc(X(Math.cos(a)*r), Y(Math.sin(a)*r), 0.15*es, 0, 7); c.fillStyle = "#1a1f27"; c.fill();
+  }
+  c.beginPath(); c.arc(cx, cy, SIM.R*es, 0, 7); c.fillStyle = "#15181d"; c.fill();
+  c.lineWidth = SIM.BORDE*es; c.strokeStyle = "#f2f2f2";
+  c.beginPath(); c.arc(cx, cy, (SIM.R - SIM.BORDE/2)*es, 0, 7); c.stroke();
+  c.strokeStyle = "#8a6a3a"; c.lineWidth = 0.01*es;
+  for (const s of [-1,1]) { c.beginPath(); c.moveTo(X(s*0.05), Y(-0.05)); c.lineTo(X(s*0.05), Y(0.05)); c.stroke(); }
+
+  for (const [b,col,nom] of [[mundo.A,"#f0883e","tú"],[mundo.B,"#58a6ff","rival"]]) {
+    if ($("#sRastro").checked && b.rastro.length > 1) {
+      c.beginPath(); c.strokeStyle = col + "55"; c.lineWidth = 1.5;
+      b.rastro.forEach((p,i) => i ? c.lineTo(X(p[0]),Y(p[1])) : c.moveTo(X(p[0]),Y(p[1])));
+      c.stroke();
+    }
+    if ($("#sRayos").checked && b === mundo.A) {
+      b.sensores.forEach((s,i) => {
+        if (s.rol === 1) return;
+        const p = SIM.aMundo(b, s.x/1000, s.y/1000), a = b.th + s.ang*Math.PI/180;
+        const on = b.detecta[i];
+        const d = SIM.daDistancia(s.tipo) && b.valor[i] < SIM.DIST_LEJOS ? b.valor[i]/1000 : SIM.alcanceDe(s, b.fis);
+        c.beginPath(); c.moveTo(X(p.x), Y(p.y));
+        c.lineTo(X(p.x + Math.cos(a)*d), Y(p.y + Math.sin(a)*d));
+        c.strokeStyle = on ? "#3fb950cc" : "#ffffff18"; c.lineWidth = on ? 2 : 1; c.stroke();
+      });
+    }
+    const e = SIM.esquinas(b);
+    c.beginPath(); e.forEach((p,i) => i ? c.lineTo(X(p.x),Y(p.y)) : c.moveTo(X(p.x),Y(p.y))); c.closePath();
+    c.fillStyle = col + "33"; c.fill(); c.strokeStyle = col; c.lineWidth = 2; c.stroke();
+    c.beginPath(); c.moveTo(X(e[0].x),Y(e[0].y)); c.lineTo(X(e[1].x),Y(e[1].y));
+    c.strokeStyle = "#e6edf3"; c.lineWidth = 3.5; c.stroke();
+    c.fillStyle = col; c.font = "600 11px system-ui"; c.textAlign = "center";
+    c.fillText(nom, X(b.x), Y(b.y) - b.L*es*0.78);
+  }
+  if (!corriendo) for (const [b,col] of [[mundo.A,"#f0883e"],[mundo.B,"#58a6ff"]]) {
+    const hx = b.x + Math.cos(b.th)*b.L*0.95, hy = b.y + Math.sin(b.th)*b.L*0.95;
+    c.beginPath(); c.moveTo(X(b.x),Y(b.y)); c.lineTo(X(hx),Y(hy));
+    c.strokeStyle = col + "88"; c.lineWidth = 1.5; c.setLineDash([3,3]); c.stroke(); c.setLineDash([]);
+    c.beginPath(); c.arc(X(hx),Y(hy),6,0,7);
+    c.fillStyle = arrastre && arrastre.b === b && arrastre.gira ? "#fff" : col; c.fill();
+    c.strokeStyle = "#0a0d12"; c.lineWidth = 2; c.stroke();
+  }
+  if (mundo.puntoChoque) { c.beginPath(); c.arc(X(mundo.puntoChoque.x),Y(mundo.puntoChoque.y),5,0,7); c.fillStyle = "#f85149"; c.fill(); }
+  $("#sTiempo").textContent = mundo.t.toFixed(1) + " s · " + (SIM.ESTADOS[mundo.ioA.estado] || "");
+}
+
+/* ---- arrastrar los robots ---- */
+const cvS = $("#cvSim");
+function aMundoXY(ev) {
+  const r = cvS.getBoundingClientRect();
+  return { x:(ev.clientX - r.left - vista.cx)/vista.esc, y:-(ev.clientY - r.top - vista.cy)/vista.esc };
+}
+function queAgarro(p) {
+  if (!mundo || !vista) return null;
+  for (const b of [mundo.A, mundo.B]) {
+    const hx = b.x + Math.cos(b.th)*b.L*0.95, hy = b.y + Math.sin(b.th)*b.L*0.95;
+    if (Math.hypot(p.x-hx, p.y-hy) < 9/vista.esc) return { b, gira:true };
+  }
+  for (const b of [mundo.A, mundo.B]) {
+    const e = SIM.ejes(b), dx = p.x-b.x, dy = p.y-b.y, h = b.L/2;
+    if (Math.abs(dx*e.fx + dy*e.fy) <= h && Math.abs(dx*e.lx + dy*e.ly) <= h) return { b, gira:false, ox:dx, oy:dy };
+  }
+  return null;
+}
+cvS.addEventListener("pointerdown", ev => {
+  if (corriendo || !mundo) return;
+  const g = queAgarro(aMundoXY(ev));
+  if (!g) return;
+  if (!libre()) { $("#sPos").value = "libre"; guardaManual(mundo); pintaCampos(); }
+  arrastre = g; cvS.setPointerCapture(ev.pointerId); ev.preventDefault();
+});
+cvS.addEventListener("pointermove", ev => {
+  if (!vista || !mundo) return;
+  if (!arrastre) { cvS.style.cursor = (!corriendo && queAgarro(aMundoXY(ev))) ? "grab" : "default"; return; }
+  const p = aMundoXY(ev), b = arrastre.b;
+  if (arrastre.gira) b.th = Math.atan2(p.y-b.y, p.x-b.x);
+  else {
+    let nx = p.x - arrastre.ox, ny = p.y - arrastre.oy;
+    const d = Math.hypot(nx,ny), lim = limR(b);
+    if (d > lim) { nx *= lim/d; ny *= lim/d; }
+    b.x = nx; b.y = ny;
+  }
+  b.vx = b.vy = b.w = 0; b.rastro.length = 0;
+  cvS.style.cursor = "grabbing";
+  guardaManual(mundo); pintaCampos(); dibujaSim();
+});
+const soltar = () => { if (arrastre) { arrastre = null; cvS.style.cursor = "grab"; dibujaSim(); } };
+cvS.addEventListener("pointerup", soltar);
+cvS.addEventListener("pointercancel", soltar);
+
+/* ---- lote ---- */
+$("#btnLote").onclick = async () => {
+  const N = Number($("#loteN").value), lim = Number($("#loteT").value);
+  const posiciones = libre() ? ["libre"] : Object.keys(SIM.POS);
+  const base = cfgSim(); base.limite = lim;
+  $("#btnLote").disabled = true;
+  const filas = [];
+  for (const pos of posiciones) {
+    const nomPos = pos === "libre" ? "Donde los pusiste" : SIM.POS[pos].nombre;
+    $("#loteEstado").textContent = nomPos + "…";
+    await new Promise(r => setTimeout(r, 10));
+    const r = { ganas:0, pierdes:0, empate:0, tiempo:0 }; let tt = 0;
+    for (let i = 0; i < N; i++) { const x = unRound({ ...base, pos }); r[x.fin]++; tt += x.t; }
+    filas.push({ pos:nomPos, ...r, t:tt/N });
+  }
+  const tot = filas.reduce((a,f) => ({ ganas:a.ganas+f.ganas, pierdes:a.pierdes+f.pierdes, empate:a.empate+f.empate, tiempo:a.tiempo+f.tiempo }), { ganas:0,pierdes:0,empate:0,tiempo:0 });
+  const n = N * posiciones.length;
+  $("#loteTabla").innerHTML = `<table><tr><th>Colocación</th><th class="n">Ganas</th><th class="n">Pierdes</th><th class="n">Empate</th><th class="n">Tiempo</th><th class="n">Dura</th></tr>` +
+    filas.map(f => `<tr><td>${esc(f.pos)}</td><td class="n" style="color:var(--ok)">${f.ganas}</td><td class="n" style="color:var(--mal)">${f.pierdes}</td><td class="n">${f.empate}</td><td class="n">${f.tiempo}</td><td class="n">${f.t.toFixed(1)}s</td></tr>`).join("") +
+    `<tr style="font-weight:700"><td>Total</td><td class="n" style="color:var(--ok)">${tot.ganas}</td><td class="n" style="color:var(--mal)">${tot.pierdes}</td><td class="n">${tot.empate}</td><td class="n">${tot.tiempo}</td><td class="n">${Math.round(tot.ganas/n*100)}%</td></tr></table>`;
+  $("#loteEstado").textContent = n + " rounds";
+  $("#btnLote").disabled = false;
+};
+
+/* ---- calibrar giros ---- */
+$("#btnCalG").onclick = () => {
+  const banco = (uL,uR,ms) => {
+    const m = SIM.crearMundo({ ...cfgSim(), rival:"quieto", pos:"frente", jitter:false, limite:60 });
+    m.A.x = 0; m.A.y = 0; m.A.th = 0; m.B.x = 0.3; m.B.y = 0;
+    m.gA = { next(){ m.ioA.motors(uL,uR); } }; m.gB = { next(){ m.ioB.motors(0,0); } };
+    while (m.t*1000 < ms && !m.fin) SIM.paso(m);
+    return { deg:Math.abs(m.A.th*180/Math.PI), mm:m.A.x*1000 };
+  };
+  const f = [
+    [`T_GIRO_90 (${P.T_GIRO_90} ms al ${Math.round(P.VEL_GIRO/255*100)} %)`, banco(P.VEL_GIRO,-P.VEL_GIRO,P.T_GIRO_90).deg.toFixed(0)+"°", "deberían ser 90°"],
+    [`T_GIRO_180 (${P.T_GIRO_180} ms)`, banco(P.VEL_GIRO,-P.VEL_GIRO,P.T_GIRO_180).deg.toFixed(0)+"°", "deberían ser 180°"],
+    [`T_ESCAPE (${P.T_ESCAPE} ms al 100 %)`, banco(P.VEL_ESCAPE,-P.VEL_ESCAPE,P.T_ESCAPE).deg.toFixed(0)+"°", "unos 150°"],
+    ["Avance en 300 ms al 100 %", banco(255,255,300).mm.toFixed(0)+" mm", ""],
+    ["Velocidad máxima", ((F.rpm/60)*Math.PI*F.llanta/1000).toFixed(2)+" m/s", "de los " + F.rpm + " rpm"],
+  ];
+  $("#calRes").innerHTML = "<table>" + f.map(r => `<tr><td>${esc(r[0])}</td><td class="n" style="color:var(--ac)">${r[1]}</td><td style="color:var(--txt2);font-size:11px">${esc(r[2])}</td></tr>`).join("") + "</table>";
+};
+
+/* ===================== ARRANQUE ===================== */
+function redibujaTodo() { dibujaRobot(); dibujaGrafica(); dibujaSim(); dibujaConf(); }
+$("#tiposAyuda").innerHTML = "<table><tr><th>Constante</th><th>Qué es</th><th>Unidad</th></tr>" +
+  NOM_TIPO_C.map((n,i) => `<tr><td><code>${n}</code></td><td style="font-size:12px">${[
+    "Digital, detecta en ALTO (JS200XF, JS40F, JS60F)","Digital, detecta en BAJO (E18-D80NK)",
+    "Analógico, detecta si sube del umbral","Analógico, detecta si baja del umbral",
+    "Sharp GP2Y0A41SK0F, 4 a 30 cm","Sharp GP2Y0A21YK0F, 10 a 80 cm",
+    "QTR-1RC / QTR-8RC de línea","QTR-1A, CNY70, TCRT5000","Ultrasónico HC-SR04"][i]}</td>
+    <td class="n">${SIM.UNIDAD[i] || "—"}</td></tr>`).join("") + "</table>";
+V.det = sensores.map(() => false);
+armaTablaSensores(); armaEditor(); armaLeyenda(); armaCalTabla(); generaCodigo();
+reset();
+redibujaTodo();
+bucle();
+addEventListener("resize", redibujaTodo);
+</script>
+</body>
+</html>

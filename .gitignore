@@ -1,0 +1,24 @@
+# compilados de Arduino
+build/
+*.hex
+*.elf
+*.o
+*.d
+
+# basura de los sistemas
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# editores
+.vscode/
+.idea/
+*.swp
+*~
+
+# node (solo si llegas a usarlo para las pruebas)
+node_modules/
+package-lock.json
+
+# datos grabados desde la plataforma
+*.csv
