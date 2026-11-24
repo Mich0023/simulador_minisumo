@@ -277,7 +277,9 @@ void pruebaMotores(int16_t vL, int16_t vR, uint32_t ms) {
   uint32_t t0 = millis();
   motores(vL, vR);
   while (millis() - t0 < ms) {
+#if PIN_START >= 0
     if (arrancadorOk()) break;                       // si llega el GO, se corta
+#endif
     if (MS_PUERTO.available() && MS_PUERTO.peek() == 'X') { MS_PUERTO.read(); break; }
     leer();
   }
@@ -302,7 +304,12 @@ void comandos() {
         evento("UMBRAL");
       }
     }
-    else if (buf[0] == 'M' && !arrancadorOk()) {     // M,vL,vR,ms
+    else if (buf[0] == 'M') {                        // M,vL,vR,ms
+#if PIN_START < 0
+      tArranque = millis();                          // sin arrancador: la prueba aplaza el inicio
+#else
+      if (arrancadorOk()) continue;                  // con GO puesto no se prueban motores
+#endif
       int16_t vL = 0, vR = 0; int32_t ms = 0;
       char* p = strtok(buf + 2, ","); if (p) vL = atoi(p);
       p = strtok(NULL, ",");          if (p) vR = atoi(p);

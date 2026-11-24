@@ -250,7 +250,9 @@ Con `PLACA_PERSONAL` eliges la forma del driver:
 ### Si no tienes módulo arrancador
 
 Pon `#define PIN_START -1`. El robot espera los segundos de
-`ESPERA_SIN_ARRANCADOR` al encender y luego pelea solo.
+`ESPERA_SIN_ARRANCADOR` al encender y luego pelea solo. Cada vez que uses la
+prueba de motores desde la plataforma, esa cuenta vuelve a empezar, así que
+puedes probar con calma sin que arranque a media prueba.
 
 ### Si no tienes dipswitch
 
