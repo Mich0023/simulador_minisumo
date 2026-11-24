@@ -19,8 +19,9 @@ extern Sensor SENSORES[];
 extern const uint8_t N_SENSORES;
 
 /* resultados de la ultima lectura */
-extern int16_t valor[];      // lectura cruda en la unidad del sensor
-extern bool    detecta[];    // true si ese sensor esta detectando
+extern int16_t valor[];        // lectura cruda en la unidad del sensor
+extern bool    detecta[];      // true si ese sensor cuenta como detectando (ya filtrado)
+extern bool    detectaCrudo[]; // lo que dio el sensor antes de los filtros
 
 /* ---------- cuanto es "muy lejos" para cada tipo ---------- */
 #define QTR_RC_TOPE      3000   // us: mas de esto ya es negro seguro
@@ -105,6 +106,12 @@ inline int16_t leerSensor(const Sensor& s) {
   }
 }
 
+/* Tope global de alcance para los sensores que SI dan distancia.
+   Si no lo definiste en configuracion.h, no limita nada. */
+#ifndef ALCANCE_MAX_MM
+  #define ALCANCE_MAX_MM 0
+#endif
+
 inline bool evaluaSensor(const Sensor& s, int16_t v) {
   switch (s.tipo) {
     case SENS_DIG_ALTO:  return v == 1;
@@ -112,7 +119,11 @@ inline bool evaluaSensor(const Sensor& s, int16_t v) {
     case SENS_ANA_MAYOR: return v >= s.umbral;
     case SENS_SHARP_41:
     case SENS_SHARP_21:
-    case SENS_HCSR04:    return v <= s.umbral;      // detecta si esta mas cerca que el umbral
+    case SENS_HCSR04: {                             // detecta si esta mas cerca que el umbral
+      int16_t lim = s.umbral;
+      if (ALCANCE_MAX_MM > 0 && lim > ALCANCE_MAX_MM) lim = ALCANCE_MAX_MM;
+      return v <= lim;
+    }
     default:             return v <= s.umbral;      // ANA_MENOR, QTR_RC y QTR_ANA: blanco = poco
   }
 }
@@ -137,25 +148,32 @@ inline void sensoresInit() {
   }
 }
 
-inline void sensoresLeer() {
+/* arma los sectores a partir de detecta[], que ya paso por los filtros */
+inline void recalcularSectores() {
   for (uint8_t k = 0; k < N_SECTORES; k++) {
     verSector[k] = false; lineaSector[k] = false; distSector[k] = DIST_LEJOS;
   }
   hayLinea = false;
   for (uint8_t i = 0; i < N_SENSORES; i++) {
+    if (!detecta[i]) continue;
     const Sensor& s = SENSORES[i];
-    int16_t v = leerSensor(s);
-    bool d = evaluaSensor(s, v);
-    valor[i] = v; detecta[i] = d;
-    if (s.rol == ROL_LINEA) {
-      if (d) { hayLinea = true; lineaSector[s.sector] = true; }
-    } else {
-      if (d) {
-        verSector[s.sector] = true;
-        if (daDistancia(s.tipo) && v < distSector[s.sector]) distSector[s.sector] = v;
-      }
+    if (s.rol == ROL_LINEA) { hayLinea = true; lineaSector[s.sector] = true; }
+    else {
+      verSector[s.sector] = true;
+      if (daDistancia(s.tipo) && valor[i] < distSector[s.sector]) distSector[s.sector] = valor[i];
     }
   }
+}
+
+/* solo lee el hardware; los filtros y los sectores van aparte */
+inline void sensoresLeer() {
+  for (uint8_t i = 0; i < N_SENSORES; i++) {
+    int16_t v = leerSensor(SENSORES[i]);
+    valor[i] = v;
+    detectaCrudo[i] = evaluaSensor(SENSORES[i], v);
+    detecta[i] = detectaCrudo[i];
+  }
+  recalcularSectores();
 }
 
 #endif /* SENSORES_H */

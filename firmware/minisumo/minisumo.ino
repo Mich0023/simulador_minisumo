@@ -17,8 +17,13 @@
 #include "telemetria.h"
 
 /* ---------- memoria de los sensores ---------- */
-int16_t valor[sizeof(SENSORES) / sizeof(SENSORES[0])];
-bool    detecta[sizeof(SENSORES) / sizeof(SENSORES[0])];
+#define NS (sizeof(SENSORES) / sizeof(SENSORES[0]))
+int16_t valor[NS];
+bool    detecta[NS];
+bool    detectaCrudo[NS];
+uint8_t  cuenta[NS];        // lecturas seguidas detectando, para CONFIRMAR
+uint32_t desdeCrudo[NS];    // desde cuando no suelta, para T_SENSOR_PEGADO
+bool     pegado[NS];        // sensor descartado por quedarse pegado
 bool    verSector[N_SECTORES];
 int16_t distSector[N_SECTORES];
 bool    lineaSector[N_SECTORES];
@@ -32,6 +37,11 @@ int16_t ultimoLado = 1;              // -1 izquierda, +1 derecha
 int16_t rumbo = 0;                   // grados hacia el rival (+ izquierda)
 bool    veRival = false;
 uint32_t tArranque = 0;
+uint32_t tEstado = 0;         // desde cuando esta en el estado actual
+uint32_t tCambio = 0;         // ultima vez que cambio de maniobra
+uint32_t tLineaDesde = 0;     // desde cuando ve linea sin soltar
+uint32_t ignoraLineaHasta = 0;
+int16_t  ultimoGiro = 1;      // hacia donde giraba cuando se trabo
 
 #define IZQ -1
 #define DER  1
@@ -42,6 +52,9 @@ uint32_t tArranque = 0;
 #define E_GIRO_LADO 4
 #define E_BUSQUEDA  5
 #define E_PRUEBA    6
+#define E_DESTRABE  7
+#define E_ROMPE     8
+#define E_SIN_LINEA 9
 
 /* a que distancia suponemos que esta el rival cuando el sensor no la mide */
 #ifndef DIST_NOMINAL
@@ -143,12 +156,83 @@ void leds() {
 #endif
 }
 
+/* =====================================================================
+   FILTROS
+   ---------------------------------------------------------------------
+   Entre leer el hardware y decidir que hacer, se descartan las lecturas
+   que no son de fiar. Ver la seccion 5 de configuracion.h.
+   ===================================================================== */
+void filtrarSensores() {
+  uint32_t ahora = millis();
+
+  for (uint8_t i = 0; i < N_SENSORES; i++) {
+    bool c = detectaCrudo[i];
+
+    // sensor pegado: lleva demasiado tiempo detectando sin soltar
+    if (T_SENSOR_PEGADO > 0 && SENSORES[i].rol == ROL_OPONENTE) {
+      if (c) {
+        if (!desdeCrudo[i]) desdeCrudo[i] = ahora;
+        else if (!pegado[i] && ahora - desdeCrudo[i] > T_SENSOR_PEGADO) {
+          pegado[i] = true;
+          evento("SENSOR PEGADO");
+        }
+      } else { desdeCrudo[i] = 0; pegado[i] = false; }
+      if (pegado[i]) c = false;
+    }
+
+    // confirmacion: tiene que detectar varias lecturas seguidas
+    if (CONFIRMAR > 1) {
+      if (c) { if (cuenta[i] < CONFIRMAR) cuenta[i]++; }
+      else cuenta[i] = 0;
+      c = (cuenta[i] >= CONFIRMAR);
+    }
+    detecta[i] = c;
+  }
+
+  // dos sensores que miran a lados opuestos no pueden ver al mismo rival
+  if (IGNORAR_CONTRADICTORIOS) {
+    for (uint8_t i = 0; i < N_SENSORES; i++) {
+      if (!detecta[i] || SENSORES[i].rol != ROL_OPONENTE) continue;
+      for (uint8_t j = i + 1; j < N_SENSORES; j++) {
+        if (!detecta[j] || SENSORES[j].rol != ROL_OPONENTE) continue;
+        int16_t dif = SENSORES[i].ang - SENSORES[j].ang;
+        while (dif > 180) dif -= 360;
+        while (dif < -180) dif += 360;
+        if (dif < 0) dif = -dif;
+        if (dif >= 120) { detecta[i] = false; detecta[j] = false; }
+      }
+    }
+  }
+
+  recalcularSectores();
+
+  // linea pegada: dice blanco desde hace demasiado
+  if (hayLinea) {
+    if (!tLineaDesde) tLineaDesde = ahora;
+    else if (T_LINEA_PEGADA > 0 && ahora - tLineaDesde > T_LINEA_PEGADA && ahora > ignoraLineaHasta) {
+      ignoraLineaHasta = ahora + T_IGNORA_LINEA;
+      evento("LINEA PEGADA");
+    }
+  } else tLineaDesde = 0;
+
+  if (ahora < ignoraLineaHasta) {
+    hayLinea = false;
+    for (uint8_t k = 0; k < N_SECTORES; k++) lineaSector[k] = false;
+  }
+}
+
 void leer() {
   sensoresLeer();
+  filtrarSensores();
   calcularRumbo();
   leds();
   servoTick();
   telemetria();
+}
+
+/* cambia de estado y apunta desde cuando */
+void pasaA(uint8_t e) {
+  if (estado != e) { estado = e; tEstado = millis(); tCambio = millis(); }
 }
 
 /* =====================================================================
@@ -180,7 +264,7 @@ int moverPor(int16_t vL, int16_t vR, uint32_t ms, bool mirarLinea, int32_t verDe
    LINEA BLANCA: la prioridad mas alta
    ===================================================================== */
 void escaparDeLinea() {
-  estado = E_LINEA;
+  pasaA(E_LINEA);
   // hacia donde conviene salir, segun por donde vio el blanco
   int16_t h = ultimoLado;
   if (lineaSector[SEC_IZQ] && !lineaSector[SEC_DER]) h = DER;
@@ -195,19 +279,67 @@ void escaparDeLinea() {
 /* =====================================================================
    COMBATE
    ===================================================================== */
+/* =====================================================================
+   DESTRABE
+   ---------------------------------------------------------------------
+   Los dos robots girando uno junto al otro sin pegarse nunca, o empujando
+   de frente sin que ninguno avance. Hay que salir de ahi y volver a entrar
+   desde otro angulo. Nunca se detienen los motores.
+   ===================================================================== */
+uint8_t  nDestrabes = 0;
+uint32_t tUltDestrabe = 0;
+
+void destrabar() {
+  pasaA(E_DESTRABE);
+  // si se vuelve a trabar luego luego, cada intento gira mas que el anterior
+  uint32_t ahora = millis();
+  if (ahora - tUltDestrabe < 3000 && nDestrabes < 4) nDestrabes++; else nDestrabes = 0;
+  tUltDestrabe = ahora;
+  evento("DESTRABE");
+
+  uint32_t giro = T_DESTRABE_GIRO + (uint32_t)T_DESTRABE_GIRO * nDestrabes / 2;
+  if (moverPor(-VEL_ESCAPE, -VEL_ESCAPE, T_DESTRABE_ATRAS, true, -1) == FIN_PARO) return;
+  // gira al reves de como estaba girando, para romper el circulo
+  int16_t h = -ultimoGiro;
+  ultimoLado = h;
+  if (moverPor(h * VEL_ESCAPE, -h * VEL_ESCAPE, giro, true, giro / 3) == FIN_TIEMPO) {
+    // si al terminar el giro sigue sin verlo, tira una embestida a ciegas
+    moverPor(VEL_ATAQUE, VEL_ATAQUE, 220, true, 0);
+  }
+  tCambio = millis();
+}
+
+/* Empuje trabado. NO se retrocede: eso seria regalarle terreno al rival
+   justo cuando lo tienes contra la orilla. Se sigue empujando pero
+   cambiando el angulo de un lado al otro, para meter la cuchilla debajo. */
+void romperEmpuje() {
+  pasaA(E_ROMPE);
+  evento("ROMPE EMPUJE");
+  int16_t poco = (int16_t)((int32_t)VEL_ATAQUE * PCT_ROMPE / 100);
+  moverPor(VEL_ATAQUE, poco, T_ROMPE_GIRO, true, -1);
+  moverPor(poco, VEL_ATAQUE, T_ROMPE_GIRO, true, -1);
+  tCambio = millis();
+}
+
 void combate() {
+  tEstado = tCambio = millis();
   while (seguir()) {
     leer();
+    uint32_t ahora = millis();
+
+    // 0) guardia general: lleva demasiado sin cambiar de maniobra
+    if (T_MAX_SIN_CAMBIO > 0 && ahora - tCambio > T_MAX_SIN_CAMBIO) { destrabar(); continue; }
 
     // 1) linea blanca: manda siempre
-    if (hayLinea) { escaparDeLinea(); continue; }
+    if (hayLinea) { pasaA(E_LINEA); escaparDeLinea(); tCambio = millis(); continue; }
 
     // 2) rival a la vista
     if (veRival) {
       int16_t a = rumbo < 0 ? -rumbo : rumbo;
       if (a <= ANG_ATAQUE) {
-        // embestida con correccion de rumbo
-        estado = E_ATAQUE;
+        // lleva mucho empujando sin resultado: cambia de angulo
+        if (T_MAX_EMPUJE > 0 && estado == E_ATAQUE && ahora - tEstado > T_MAX_EMPUJE) { romperEmpuje(); continue; }
+        pasaA(E_ATAQUE);
         int32_t k = a;
         if (k > ANG_CORRECCION_PLENA) k = ANG_CORRECCION_PLENA;
         // la llanta de adentro baja de 100 % hasta PCT_CORRECCION
@@ -215,16 +347,19 @@ void combate() {
         if (rumbo > 0) motores(dentro, VEL_ATAQUE);     // esta a la izquierda
         else           motores(VEL_ATAQUE, dentro);     // a la derecha
       } else {
-        // esta de lado o atras: girar hacia el
-        estado = E_GIRO_LADO;
-        girar(rumbo > 0 ? IZQ : DER, VEL_GIRO);
+        // de lado o atras: girar hacia el. Si lleva mucho girando, los dos
+        // estan dando vueltas juntos y hay que destrabarse.
+        if (T_MAX_LADO > 0 && estado == E_GIRO_LADO && ahora - tEstado > T_MAX_LADO) { destrabar(); continue; }
+        pasaA(E_GIRO_LADO);
+        ultimoGiro = rumbo > 0 ? IZQ : DER;
+        girar(ultimoGiro, VEL_GIRO);
       }
       continue;
     }
 
     // 3) no ve nada: buscar
-    estado = E_BUSQUEDA;
-    if (BUSCAR_GIRANDO) girar(ultimoLado, VEL_BUSQUEDA);
+    pasaA(E_BUSQUEDA);
+    if (BUSCAR_GIRANDO) { ultimoGiro = ultimoLado; girar(ultimoLado, VEL_BUSQUEDA); }
     else                motores(VEL_AVANCE, VEL_AVANCE);
   }
 }
@@ -246,7 +381,7 @@ void flanqueo(int16_t h) {
 }
 
 void apertura() {
-  estado = E_APERTURA;
+  pasaA(E_APERTURA);
   switch (modo) {
     case 1: moverPor(VEL_ATAQUE, VEL_ATAQUE, T_DIRECTO, true, -1); return;
     case 2: giroApertura(IZQ, T_GIRO_90);  return;
@@ -374,6 +509,9 @@ void loop() {
   // GO: arranca sin ningun retraso (reglamento Robochallenge 4.2)
   peleando = true;
   tArranque = millis();
+  for (uint8_t i = 0; i < N_SENSORES; i++) { cuenta[i] = 0; desdeCrudo[i] = 0; pegado[i] = false; }
+  tLineaDesde = ignoraLineaHasta = 0;
+  nDestrabes = 0; tUltDestrabe = 0;
   evento("GO");
   apertura();
   if (!abortado) combate();

@@ -24,7 +24,8 @@ const SIM = (() => {
 
   const G = 9.81, DT = 0.002, R = 0.385, BORDE = 0.025;
   const IZQ = -1, DER = 1;
-  const ESTADOS = ["Esperando","Apertura","Línea blanca","Ataque","Giro al costado","Búsqueda","Prueba de motores"];
+  const ESTADOS = ["Esperando","Apertura","Línea blanca","Ataque","Giro al costado","Búsqueda",
+                   "Prueba de motores","Destrabándose","Rompiendo empuje","Línea ignorada"];
   const APERTURAS = ["0 Automática","1 Ataque directo","2 Giro 90° izquierda","3 Giro 90° derecha",
                      "4 Giro 180° (derecha)","5 Flanqueo izquierda","6 Flanqueo derecha","7 Giro 180° (izquierda)"];
 
@@ -33,6 +34,12 @@ const SIM = (() => {
     PCT_CORRECCION:55, ANG_CORRECCION_PLENA:20, ANG_ATAQUE:60, DIST_NOMINAL:150,
     T_GIRO_90:230, T_GIRO_180:460, T_GIRO_45:115, T_RETROCESO:250, T_ESCAPE:220,
     T_ARCO:450, PCT_ARCO_INTERIOR:45, T_DIRECTO:600, PCT_GIRO_CIEGO:60, BUSCAR_GIRANDO:0,
+    // filtros de sensores
+    ALCANCE_MAX_MM:500, CONFIRMAR:3, T_SENSOR_PEGADO:6000, IGNORAR_CONTRADICTORIOS:1,
+    // guardias anti-trabas
+    T_MAX_LADO:1500, T_MAX_EMPUJE:0, T_MAX_SIN_CAMBIO:10000,
+    T_DESTRABE_ATRAS:300, T_DESTRABE_GIRO:260, T_ROMPE_GIRO:160, PCT_ROMPE:25,
+    T_LINEA_PEGADA:1500, T_IGNORA_LINEA:700,
   };
   const FIS_DEF = { masa:500, rpm:375, llanta:27.5, fuerza:5.0, mu:0.9, giroEscala:1.0,
                     lado:98, track:80, base:47, alcance:70, cono:8, cuchilla:35 };
@@ -59,11 +66,16 @@ const SIM = (() => {
     }
   }
   /* misma regla de deteccion que evaluaSensor() del firmware */
-  function evalua(s, v) {
+  function evalua(s, v, topeMm) {
     switch (s.tipo) {
       case TIPO.DIG_ALTO:  return v === 1;
       case TIPO.DIG_BAJO:  return v === 0;
       case TIPO.ANA_MAYOR: return v >= s.umbral;
+      case TIPO.SHARP_41: case TIPO.SHARP_21: case TIPO.HCSR04: {
+        let lim = s.umbral;
+        if (topeMm > 0 && lim > topeMm) lim = topeMm;
+        return v <= lim;
+      }
       default:             return v <= s.umbral;
     }
   }
@@ -80,6 +92,9 @@ const SIM = (() => {
       giroEscala: f.giroEscala ?? 1, cuchilla: f.cuchilla/100, fis: f, sensores,
       uL:0, uR:0, trac:1, tracSig:1, rastro:[],
       valor: new Array(sensores.length).fill(0), detecta: new Array(sensores.length).fill(false),
+      detectaCrudo: new Array(sensores.length).fill(false),
+      cuenta: new Array(sensores.length).fill(0), desdeCrudo: new Array(sensores.length).fill(0),
+      pegado: new Array(sensores.length).fill(false),
       verSector:[false,false,false,false], distSector:[DIST_LEJOS,DIST_LEJOS,DIST_LEJOS,DIST_LEJOS],
       lineaSector:[false,false,false,false], hayLinea:false, rumbo:0, veRival:false,
     };
@@ -198,8 +213,8 @@ const SIM = (() => {
         else if (s.tipo === TIPO.ANA_MAYOR) v = dist === null ? 40 : Math.round(900 - dist*1000);
         else                                v = dist === null ? 900 : Math.round(dist*1000);
       }
-      const d = evalua(s, v);
-      b.valor[i] = v; b.detecta[i] = d;
+      const d = evalua(s, v, mundo.cfg.P?.ALCANCE_MAX_MM || 0);
+      b.valor[i] = v; b.detectaCrudo[i] = d; b.detecta[i] = d;
       if (s.rol === ROL.LINEA) { if (d) { b.hayLinea = true; b.lineaSector[s.sector] = true; } }
       else if (d) {
         b.verSector[s.sector] = true;
@@ -207,6 +222,21 @@ const SIM = (() => {
       }
     }
     return b;
+  }
+
+  /* arma los sectores a partir de detecta[], ya filtrado (igual que el firmware) */
+  function recalcSectores(b) {
+    for (let k = 0; k < 4; k++) { b.verSector[k] = false; b.lineaSector[k] = false; b.distSector[k] = DIST_LEJOS; }
+    b.hayLinea = false;
+    for (let i = 0; i < b.sensores.length; i++) {
+      if (!b.detecta[i]) continue;
+      const s = b.sensores[i];
+      if (s.rol === ROL.LINEA) { b.hayLinea = true; b.lineaSector[s.sector] = true; }
+      else {
+        b.verSector[s.sector] = true;
+        if (daDistancia(s.tipo) && b.valor[i] < b.distSector[s.sector]) b.distSector[s.sector] = b.valor[i];
+      }
+    }
   }
 
   /* mismo calculo de rumbo que calcularRumbo() del firmware */
@@ -227,8 +257,55 @@ const SIM = (() => {
   /* ===================== EL PROGRAMA (copia del .ino) ===================== */
   function* programa(io, P, modo) {
     const b = io.b;
-    let ultimo = DER;
-    const leer = () => { io.sense(); calcularRumbo(b, P); if (b.rumbo > 10) ultimo = IZQ; if (b.rumbo < -10) ultimo = DER; };
+    let ultimo = DER, ultimoGiro = DER;
+    let tEstado = io.t, tCambio = io.t, nDestrabes = 0, tUltDestrabe = -1e9;
+    let tLineaDesde = 0, ignoraLineaHasta = 0;
+
+    const pasaA = e => { if (io.estado !== e) { io.estado = e; tEstado = io.t; tCambio = io.t; } };
+
+    /* ---- filtros, iguales a filtrarSensores() del firmware ---- */
+    function filtrar() {
+      const ahora = io.t;
+      for (let i = 0; i < b.sensores.length; i++) {
+        let c = b.detectaCrudo[i];
+        if (P.T_SENSOR_PEGADO > 0 && b.sensores[i].rol === ROL.OPONENTE) {
+          if (c) {
+            if (!b.desdeCrudo[i]) b.desdeCrudo[i] = ahora;
+            else if (!b.pegado[i] && ahora - b.desdeCrudo[i] > P.T_SENSOR_PEGADO) b.pegado[i] = true;
+          } else { b.desdeCrudo[i] = 0; b.pegado[i] = false; }
+          if (b.pegado[i]) c = false;
+        }
+        if (P.CONFIRMAR > 1) {
+          if (c) { if (b.cuenta[i] < P.CONFIRMAR) b.cuenta[i]++; } else b.cuenta[i] = 0;
+          c = b.cuenta[i] >= P.CONFIRMAR;
+        }
+        b.detecta[i] = c;
+      }
+      if (P.IGNORAR_CONTRADICTORIOS) {
+        for (let i = 0; i < b.sensores.length; i++) {
+          if (!b.detecta[i] || b.sensores[i].rol !== ROL.OPONENTE) continue;
+          for (let j = i + 1; j < b.sensores.length; j++) {
+            if (!b.detecta[j] || b.sensores[j].rol !== ROL.OPONENTE) continue;
+            let dif = b.sensores[i].ang - b.sensores[j].ang;
+            while (dif > 180) dif -= 360;
+            while (dif < -180) dif += 360;
+            if (Math.abs(dif) >= 120) { b.detecta[i] = false; b.detecta[j] = false; }
+          }
+        }
+      }
+      recalcSectores(b);
+      if (b.hayLinea) {
+        if (!tLineaDesde) tLineaDesde = ahora;
+        else if (ahora - tLineaDesde > P.T_LINEA_PEGADA && ahora > ignoraLineaHasta) ignoraLineaHasta = ahora + P.T_IGNORA_LINEA;
+      } else tLineaDesde = 0;
+      if (ahora < ignoraLineaHasta) { b.hayLinea = false; for (let k = 0; k < 4; k++) b.lineaSector[k] = false; }
+    }
+
+    const leer = () => {
+      io.sense(); filtrar(); calcularRumbo(b, P);
+      if (b.rumbo > 10) ultimo = IZQ;
+      if (b.rumbo < -10) ultimo = DER;
+    };
     const seguir = () => io.permitido();
 
     function* moverPor(vL, vR, ms, mirarLinea, verDesde) {
@@ -243,13 +320,38 @@ const SIM = (() => {
       return 0;
     }
     function* escapar() {
-      io.estado = 2;
+      pasaA(2);
       let h = ultimo;
       if (b.lineaSector[SEC.IZQ] && !b.lineaSector[SEC.DER]) h = DER;
       else if (b.lineaSector[SEC.DER] && !b.lineaSector[SEC.IZQ]) h = IZQ;
       const v = b.lineaSector[SEC.ATRAS] ? P.VEL_ESCAPE : -P.VEL_ESCAPE;
       if ((yield* moverPor(v, v, P.T_RETROCESO, false, -1)) === 3) return;
       yield* moverPor(h*P.VEL_ESCAPE, -h*P.VEL_ESCAPE, P.T_ESCAPE, false, P.T_ESCAPE/2);
+    }
+    function* destrabar() {
+      pasaA(7);
+      const ahora = io.t;
+      if (ahora - tUltDestrabe < 3000 && nDestrabes < 4) nDestrabes++; else nDestrabes = 0;
+      tUltDestrabe = ahora;
+      io.destrabes = (io.destrabes || 0) + 1;
+      const giro = P.T_DESTRABE_GIRO + P.T_DESTRABE_GIRO * nDestrabes / 2;
+      if ((yield* moverPor(-P.VEL_ESCAPE, -P.VEL_ESCAPE, P.T_DESTRABE_ATRAS, true, -1)) === 3) return;
+      const h = -ultimoGiro;
+      ultimo = h;
+      if ((yield* moverPor(h*P.VEL_ESCAPE, -h*P.VEL_ESCAPE, giro, true, giro/3)) === 0)
+        yield* moverPor(P.VEL_ATAQUE, P.VEL_ATAQUE, 220, true, 0);
+      tCambio = io.t;
+    }
+    /* Empuje trabado: NO se retrocede (seria regalar terreno). Se sigue
+       empujando pero cambiando el angulo de un lado al otro, para meter la
+       cuchilla debajo del rival. */
+    function* romperEmpuje() {
+      pasaA(8);
+      io.rompes = (io.rompes || 0) + 1;
+      const poco = Math.floor(P.VEL_ATAQUE * P.PCT_ROMPE / 100);
+      yield* moverPor(P.VEL_ATAQUE, poco, P.T_ROMPE_GIRO, true, -1);
+      yield* moverPor(poco, P.VEL_ATAQUE, P.T_ROMPE_GIRO, true, -1);
+      tCambio = io.t;
     }
     function* giroApertura(h, t) { ultimo = h; yield* moverPor(h*P.VEL_GIRO, -h*P.VEL_GIRO, t, true, Math.floor(t*P.PCT_GIRO_CIEGO/100)); }
     function* flanqueo(h) {
@@ -260,7 +362,7 @@ const SIM = (() => {
       else           yield* moverPor(inter, P.VEL_ATAQUE, P.T_ARCO, true, 0);
     }
 
-    io.estado = 1;
+    pasaA(1);
     switch (modo) {
       case 1: yield* moverPor(P.VEL_ATAQUE, P.VEL_ATAQUE, P.T_DIRECTO, true, -1); break;
       case 2: yield* giroApertura(IZQ, P.T_GIRO_90); break;
@@ -277,26 +379,31 @@ const SIM = (() => {
         else yield* giroApertura(DER, P.T_GIRO_180);
     }
 
+    tEstado = tCambio = io.t;
     while (seguir()) {
       leer();
-      if (b.hayLinea) { yield* escapar(); continue; }
+      const ahora = io.t;
+      if (P.T_MAX_SIN_CAMBIO > 0 && ahora - tCambio > P.T_MAX_SIN_CAMBIO) { yield* destrabar(); continue; }
+      if (b.hayLinea) { pasaA(2); yield* escapar(); tCambio = io.t; continue; }
       if (b.veRival) {
         const a = Math.abs(b.rumbo);
         if (a <= P.ANG_ATAQUE) {
-          io.estado = 3;
+          if (P.T_MAX_EMPUJE > 0 && io.estado === 3 && ahora - tEstado > P.T_MAX_EMPUJE) { yield* romperEmpuje(); continue; }
+          pasaA(3);
           const k = Math.min(a, P.ANG_CORRECCION_PLENA);
           const dentro = Math.floor(P.VEL_ATAQUE * (100 - (100-P.PCT_CORRECCION)*k/P.ANG_CORRECCION_PLENA) / 100);
           if (b.rumbo > 0) io.motors(dentro, P.VEL_ATAQUE);
           else             io.motors(P.VEL_ATAQUE, dentro);
         } else {
-          io.estado = 4;
-          const h = b.rumbo > 0 ? IZQ : DER;
-          io.motors(h*P.VEL_GIRO, -h*P.VEL_GIRO);
+          if (P.T_MAX_LADO > 0 && io.estado === 4 && ahora - tEstado > P.T_MAX_LADO) { yield* destrabar(); continue; }
+          pasaA(4);
+          ultimoGiro = b.rumbo > 0 ? IZQ : DER;
+          io.motors(ultimoGiro*P.VEL_GIRO, -ultimoGiro*P.VEL_GIRO);
         }
         yield; continue;
       }
-      io.estado = 5;
-      if (P.BUSCAR_GIRANDO) io.motors(ultimo*P.VEL_BUSQUEDA, -ultimo*P.VEL_BUSQUEDA);
+      pasaA(5);
+      if (P.BUSCAR_GIRANDO) { ultimoGiro = ultimo; io.motors(ultimo*P.VEL_BUSQUEDA, -ultimo*P.VEL_BUSQUEDA); }
       else                  io.motors(P.VEL_AVANCE, P.VEL_AVANCE);
       yield;
     }
@@ -386,6 +493,6 @@ const SIM = (() => {
 
   return { G, DT, R, BORDE, TIPO, NOMBRE_TIPO, UNIDAD, ROL, SEC, NOMBRE_SEC, DIST_LEJOS, QTR_TOPE,
            ESTADOS, APERTURAS, PARAM_DEF, FIS_DEF, SENSORES_DEF, RIVALES, POS,
-           daDistancia, evalua, alcanceDe, crearMundo, paso, correrRound, esquinas, aMundo, ejes, leerSensores };
+           daDistancia, evalua, alcanceDe, recalcSectores, crearMundo, paso, correrRound, esquinas, aMundo, ejes, leerSensores };
 })();
 if (typeof module !== "undefined") module.exports = SIM;

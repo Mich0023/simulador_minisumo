@@ -338,6 +338,70 @@ suponiendo que están de espaldas.
 El **flanqueo** es para rivales que salen disparados de frente: gira unos 45°,
 los deja pasar y les llega por el costado.
 
+### Filtros de sensores
+
+Los infrarrojos ven mucho más lejos que el dohyo (77 cm), así que sin filtros
+el robot persigue al público, a las paredes y a la mesa. En la sección 5 de
+`configuracion.h`:
+
+| Constante | Qué hace |
+|---|---|
+| `ALCANCE_MAX_MM` | ignora lo que esté más lejos que eso, en milímetros |
+| `CONFIRMAR` | cuántas lecturas seguidas pide antes de creerle a un sensor |
+| `T_SENSOR_PEGADO` | si un sensor lleva tanto tiempo detectando sin soltar, lo da por roto y lo ignora |
+| `IGNORAR_CONTRADICTORIOS` | si dos sensores que miran a lados opuestos detectan a la vez, al menos uno ve el fondo: ignora los dos |
+
+> **Lo más importante de esta sección:** `ALCANCE_MAX_MM` **solo funciona con
+> sensores que miden distancia** (`SENS_SHARP_41`, `SENS_SHARP_21`,
+> `SENS_HCSR04`). Un sensor digital como el JS200XF solo dice *veo* o *no veo*,
+> y de ahí ningún programa puede sacar a qué distancia está la cosa. A esos hay
+> que bajarles el alcance **a mano**: con el botón de atrás, o soldando los pads
+> que traen marcados. En el JS200XF eso lo deja en 120 cm; de ahí para abajo se
+> ajusta con el botón.
+>
+> Para los sensores digitales, lo que sí ayuda contra las cosas lejanas son
+> `CONFIRMAR` y `IGNORAR_CONTRADICTORIOS`. Las cosas que están fuera del dohyo
+> entran y salen del haz mientras el robot gira, así que parpadean; el rival, que
+> está cerca, se ve firme.
+
+Midiendo en el simulador con público alrededor del dohyo, 400 rounds por caso:
+
+| Configuración | Rounds ganados |
+|---|---|
+| Con todos los filtros | 31 % |
+| Sin `CONFIRMAR` | 16 % |
+| Sin `IGNORAR_CONTRADICTORIOS` | 28 % |
+| Sin ningún filtro | 0 % |
+
+### Guardias: que nunca se quede trabado
+
+Sección 6 de `configuracion.h`. Ninguna de estas maniobras detiene los motores,
+porque el reglamento quita el punto si el robot se queda quieto 5 segundos.
+
+| Constante | Cuándo salta | Qué hace |
+|---|---|---|
+| `T_MAX_LADO` | lleva ese tiempo girando de lado sin lograr ponerlo al frente: los dos están dando vueltas juntos | retrocede, gira al revés de como venía girando y vuelve a entrar. Si se vuelve a trabar enseguida, cada intento gira más |
+| `T_MAX_EMPUJE` | lleva ese tiempo empujando de frente sin que pase nada | sigue empujando pero cambia el ángulo de un lado al otro, para meter la cuchilla debajo |
+| `T_MAX_SIN_CAMBIO` | no cambió de maniobra en todo ese tiempo | destrabe completo. Es la red de seguridad |
+| `T_LINEA_PEGADA` | los sensores de línea dicen blanco sin soltar | los ignora un rato y avanza, porque si no se la pasa retrocediendo hasta caerse por atrás |
+
+**`T_MAX_EMPUJE` viene apagado (`0`).** En el simulador costaba más puntos de
+los que daba: muchas veces se metía cuando el empuje sí iba ganando. Si quieres
+probarlo, 4500 fue el valor menos malo.
+
+Lo que el simulador midió de las guardias, 400 rounds por caso:
+
+| | vs rival que gira | vs otro robot con este mismo programa |
+|---|---|---|
+| Sin guardias | gana 18 %, empata 20 % | gana 33 %, empata 50 % |
+| Con las guardias | gana 12 %, empata 10 % | gana 35 %, empata 45 % |
+
+Léelo con cuidado: **las guardias no te hacen ganar más, te hacen empatar
+menos.** Contra un rival más agresivo que tú, los rounds que antes se iban a
+tiempo ahora se deciden, y una parte se deciden en tu contra. A cambio dejas de
+regalar rounds a la decisión de los jueces. Contra un robot parecido al tuyo sí
+ganas un poco más. Si prefieres el empate, sube `T_MAX_LADO` o ponlo en `0`.
+
 ### Sobre el reglamento
 
 El firmware arranca **sin ningún retraso** al recibir la señal, como pide el

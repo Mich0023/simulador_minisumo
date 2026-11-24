@@ -213,4 +213,66 @@
   #define MS_PUERTO  Serial
 #endif
 
+/* ---------------------------------------------------------------------
+   Valores por defecto de los filtros y las guardias.
+   Sirven para que un configuracion.h viejo siga compilando despues de
+   actualizar el firmware: lo que no definiste, queda apagado.
+   --------------------------------------------------------------------- */
+#ifndef CONFIRMAR
+  #define CONFIRMAR        1          // sin filtro de confirmacion
+#endif
+#ifndef T_SENSOR_PEGADO
+  #define T_SENSOR_PEGADO  0          // apagado
+#endif
+#ifndef IGNORAR_CONTRADICTORIOS
+  #define IGNORAR_CONTRADICTORIOS false
+#endif
+#ifndef T_MAX_LADO
+  #define T_MAX_LADO       0          // apagado
+#endif
+#ifndef T_MAX_EMPUJE
+  #define T_MAX_EMPUJE     0          // apagado
+#endif
+#ifndef T_MAX_SIN_CAMBIO
+  #define T_MAX_SIN_CAMBIO 0          // apagado
+#endif
+#ifndef T_DESTRABE_ATRAS
+  #define T_DESTRABE_ATRAS 300
+#endif
+#ifndef T_DESTRABE_GIRO
+  #define T_DESTRABE_GIRO  260
+#endif
+#ifndef T_ROMPE_GIRO
+  #define T_ROMPE_GIRO     160
+#endif
+#ifndef PCT_ROMPE
+  #define PCT_ROMPE        25
+#endif
+#ifndef T_LINEA_PEGADA
+  #define T_LINEA_PEGADA   0          // apagado
+#endif
+#ifndef T_IGNORA_LINEA
+  #define T_IGNORA_LINEA   700
+#endif
+#ifndef MS_ENTRE_DATOS
+  #define MS_ENTRE_DATOS   25
+#endif
+#ifndef BAUDIOS
+  #define BAUDIOS          115200
+#endif
+#ifndef APERTURA_FIJA
+  #define APERTURA_FIJA    0
+#endif
+#ifndef ESPERA_SIN_ARRANCADOR
+  #define ESPERA_SIN_ARRANCADOR 5000
+#endif
+#ifndef INTERCAMBIAR_MOTORES
+  #define INTERCAMBIAR_MOTORES false
+#endif
+#ifndef SERVO_US_CERRADO
+  #define SERVO_US_CERRADO 1000
+  #define SERVO_US_ABIERTO 2000
+  #define T_SERVO          500
+#endif
+
 #endif /* PLACAS_H */

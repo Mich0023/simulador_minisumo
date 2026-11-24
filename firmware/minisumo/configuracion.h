@@ -155,7 +155,74 @@ const uint8_t N_SENSORES = sizeof(SENSORES) / sizeof(SENSORES[0]);
 #define T_SERVO          500   // cuanto tiempo manda el pulso de abrir
 
 /* =====================================================================
-   5. TELEMETRIA (los datos que ve la plataforma)
+   5. FILTROS DE SENSORES
+   ---------------------------------------------------------------------
+   Para que el robot no persiga al publico ni a las paredes.
+   ===================================================================== */
+
+/* Ignora todo lo que este mas lejos de esto, en milimetros. 0 = sin tope.
+   OJO IMPORTANTE: esto solo puede funcionar con sensores que MIDEN
+   distancia (SENS_SHARP_41, SENS_SHARP_21, SENS_HCSR04). Un sensor digital
+   como el JS200XF solo dice "veo" o "no veo", y de ahi ningun programa
+   puede sacar a que distancia esta la cosa. A esos hay que bajarles el
+   alcance a mano, con su boton o soldando los pads de atras.
+   Para los digitales, lo que si ayuda contra lo que esta lejos son los dos
+   filtros de abajo. Lee el README. */
+#define ALCANCE_MAX_MM   500
+
+/* Cuantas lecturas seguidas tiene que dar un sensor para creerle.
+   Sirve contra parpadeos de cosas lejanas o brillantes. 1 = sin filtro.
+   Cada lectura son menos de 2 ms, asi que 3 casi no retrasa la reaccion.
+   Es el filtro que mas sirve: en el simulador, con publico alrededor del
+   dohyo, quitarlo baja de 31 % a 16 % de rounds ganados. */
+#define CONFIRMAR        3
+
+/* Si un sensor lleva este tiempo detectando SIN SOLTAR, seguro esta roto o
+   esta viendo al publico: se ignora hasta que suelte. 0 = apagado. */
+#define T_SENSOR_PEGADO  6000
+
+/* Si dos sensores que miran a lados OPUESTOS detectan al mismo tiempo, al
+   menos uno esta viendo el fondo: el rival no puede estar de los dos lados.
+   Con esto se ignoran los dos y el robot sigue buscando. */
+#define IGNORAR_CONTRADICTORIOS  true
+
+/* =====================================================================
+   6. GUARDIAS (para que nunca se quede trabado)
+   ---------------------------------------------------------------------
+   El reglamento dice que si tu robot se queda quieto 5 segundos pierde el
+   punto, asi que NINGUNA de estas maniobras detiene los motores.
+   ===================================================================== */
+
+/* Girando de lado junto al rival sin lograr ponerlo al frente: los dos
+   estan dando vueltas juntos. Pon 0 para apagarlo.
+   Tu dijiste 10 segundos; lo dejo en 1.5 s porque 10 s es la mitad de un
+   round. En el simulador, esto baja los empates del 20 % al 13 %. */
+#define T_MAX_LADO       1500
+
+/* Empujando de frente sin que pase nada. APAGADO por defecto (0):
+   en el simulador costaba mas puntos de los que daba, porque muchas veces
+   se mete cuando el empuje si iba ganando. Si lo quieres probar, 4500 fue
+   el valor menos malo. */
+#define T_MAX_EMPUJE     0
+#define PCT_ROMPE        25     // velocidad de la llanta de adentro al cambiar de angulo
+
+/* Ultimo recurso: si en todo este tiempo no cambio de maniobra, se destraba.
+   Es la red de seguridad que pediste. Pon 0 para apagarlo. */
+#define T_MAX_SIN_CAMBIO 10000
+
+/* Maniobra de destrabe */
+#define T_DESTRABE_ATRAS 300    // cuanto retrocede
+#define T_DESTRABE_GIRO  260    // cuanto gira despues, al 100 %
+#define T_ROMPE_GIRO     160    // cuanto dura cada cambio de angulo al romper el empuje
+
+/* Si los sensores de linea dicen blanco todo este tiempo seguido, estan
+   sucios, rotos o el robot ya esta afuera. Se ignoran un rato y se avanza,
+   porque si no el robot se la pasa retrocediendo hasta caerse por atras. */
+#define T_LINEA_PEGADA   1500
+#define T_IGNORA_LINEA   700
+
+/* =====================================================================
+   7. TELEMETRIA (los datos que ve la plataforma)
    ===================================================================== */
 #define BAUDIOS         115200
 #define MS_ENTRE_DATOS  25     // cada cuanto manda datos mientras pelea
