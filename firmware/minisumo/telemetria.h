@@ -35,9 +35,10 @@ extern bool arrancadorOk();
 extern bool killOk();
 extern uint8_t leerDip();
 
+inline void telemetriaBombea();
 inline void evento(const char* t) {
   if (!MS_PUERTO) return;
-  MS_PUERTO.print(F("E,")); MS_PUERTO.println(t);
+  MS_PUERTO.print(F("E,")); MS_PUERTO.println(t);   // los eventos son cortos y poco frecuentes
 }
 
 inline void mandaInfo() {
@@ -81,24 +82,58 @@ inline void mandaInfo() {
   MS_PUERTO.print(F(",BUSCAR_GIRANDO="));   MS_PUERTO.println(BUSCAR_GIRANDO ? 1 : 0);
 }
 
+/* ---------------------------------------------------------------------
+   Transmisor que NO bloquea
+   ---------------------------------------------------------------------
+   El buffer de salida del puerto es chico (64 bytes en casi todas las
+   placas) y una linea de datos con muchos sensores no cabe completa.
+   Por eso la linea se arma en memoria y se va soltando a pedazos, tantos
+   bytes como quepan en cada vuelta. Asi nunca se detiene el combate,
+   aunque tengas 16 sensores.
+   --------------------------------------------------------------------- */
+#ifndef TX_MAX
+  #define TX_MAX 240
+#endif
+static char     txBuf[TX_MAX];
+static uint16_t txLen = 0, txPos = 0;
+
+inline void txChar(char c) { if (txLen < TX_MAX) txBuf[txLen++] = c; }
+inline void txStr(const char* s) { while (*s) txChar(*s++); }
+inline void txInt(long v) {
+  if (v < 0) { txChar('-'); v = -v; }
+  char d[12]; uint8_t n = 0;
+  do { d[n++] = (char)('0' + (v % 10)); v /= 10; } while (v);
+  while (n) txChar(d[--n]);
+}
+
+/* suelta lo que quepa; llamalo seguido */
+inline void telemetriaBombea() {
+  if (txPos >= txLen) return;
+  if (!MS_PUERTO) { txPos = txLen = 0; return; }
+  int libre = MS_PUERTO.availableForWrite();
+  while (libre > 0 && txPos < txLen) { MS_PUERTO.write(txBuf[txPos++]); libre--; }
+  if (txPos >= txLen) { txPos = txLen = 0; }
+}
+
 inline void telemetria(bool forzar = false) {
+  telemetriaBombea();
+  if (txLen) return;                      // todavia hay linea pendiente
   static uint32_t tUlt = 0;
   uint16_t periodo = peleando ? MS_ENTRE_DATOS : (MS_ENTRE_DATOS * 2);
   if (!forzar && millis() - tUlt < periodo) return;
   if (!MS_PUERTO) return;
-  // si no cabe la linea completa, mejor no mandar nada que trabar el robot
-  if (MS_PUERTO.availableForWrite() < (int)(40 + N_SENSORES * 7)) return;
   tUlt = millis();
-  MS_PUERTO.print(F("D,")); MS_PUERTO.print(millis());
-  MS_PUERTO.print(','); MS_PUERTO.print(estado);
-  MS_PUERTO.print(','); MS_PUERTO.print(modo);
-  MS_PUERTO.print(','); MS_PUERTO.print(arrancadorOk() ? 1 : 0);
-  MS_PUERTO.print(','); MS_PUERTO.print(killOk() ? 1 : 0);
-  MS_PUERTO.print(','); MS_PUERTO.print(leerDip());
-  MS_PUERTO.print(','); MS_PUERTO.print(velIzq);
-  MS_PUERTO.print(','); MS_PUERTO.print(velDer);
-  for (uint8_t i = 0; i < N_SENSORES; i++) { MS_PUERTO.print(','); MS_PUERTO.print(valor[i]); }
-  MS_PUERTO.println();
+  txStr("D,");  txInt(millis());
+  txChar(','); txInt(estado);
+  txChar(','); txInt(modo);
+  txChar(','); txInt(arrancadorOk() ? 1 : 0);
+  txChar(','); txInt(killOk() ? 1 : 0);
+  txChar(','); txInt(leerDip());
+  txChar(','); txInt(velIzq);
+  txChar(','); txInt(velDer);
+  for (uint8_t i = 0; i < N_SENSORES; i++) { txChar(','); txInt(valor[i]); }
+  txChar('\n');
+  telemetriaBombea();
 }
 
 #endif /* TELEMETRIA_H */

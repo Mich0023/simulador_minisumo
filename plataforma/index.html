@@ -93,7 +93,7 @@
         <p class="nota">El dibujo se arma solo con la posición y el ángulo que le pusiste a cada sensor en <code>configuracion.h</code>. La flecha naranja es hacia dónde cree el robot que está el rival.</p>
       </div>
       <div class="caja">
-        <h2>Sensores</h2>
+        <h2>Sensores <span class="pill av" id="avisoDif" style="display:none"></span></h2>
         <div id="tablaSensores"><p class="vacio">Conecta el robot para ver sus sensores.</p></div>
       </div>
       <div class="caja">
@@ -291,6 +291,20 @@
           <button id="btnAdd" class="pri">Agregar sensor</button>
           <button id="btnDelRobot" disabled>Traer los del robot</button>
           <button id="btnDefault">Ejemplo</button>
+        </div>
+        <div class="caja" style="margin:12px 0 0;background:var(--panel2)">
+          <h2 style="margin-bottom:9px">Abanico de sensores</h2>
+          <div class="campos" style="margin-bottom:9px">
+            <div><label>Cuántos</label><input type="number" id="abN" value="7" min="2" max="24"></div>
+            <div><label>Apertura total (°)</label><input type="number" id="abAp" value="180" min="10" max="360" step="10"></div>
+            <div><label>Tipo</label><select id="abTipo"></select></div>
+            <div><label>Umbral</label><input type="number" id="abUm" value="0"></div>
+          </div>
+          <div class="fila">
+            <button id="btnAbanico" class="pri">Crear abanico</button>
+            <label class="sw"><input type="checkbox" id="abBorrar" checked> reemplazar los de rival</label>
+          </div>
+          <p class="nota">Acomoda los sensores repartidos en abanico sobre la orilla del robot, mirando hacia afuera. Los de línea no se tocan.</p>
         </div>
         <p class="nota">
           <b>x</b> y <b>y</b> son milímetros desde el centro del robot: x hacia adelante, y hacia la izquierda.
@@ -919,7 +933,17 @@ function armaTablaSensores() {
   $$("[data-gr]").forEach(c => c.onchange = armaLeyenda);
 }
 
+function revisaDiferencia() {
+  const el = $("#avisoDif");
+  if (!el) return;
+  if (info && sensores.length !== info.n) {
+    el.style.display = "";
+    el.textContent = `tu lista tiene ${sensores.length} y el robot ${info.n}: súbele el firmware`;
+  } else el.style.display = "none";
+}
+
 function pintaVivo() {
+  revisaDiferencia();
   $("#vStart").textContent = V.start ? "GO (1)" : "parado (0)";
   $("#vStart").style.color = V.start ? "var(--ok)" : "var(--txt2)";
   $("#vKill").textContent = V.kill ? "ok (1)" : "CORTADO (0)";
@@ -940,6 +964,12 @@ function pintaVivo() {
     if (!led) return;
     led.className = "led" + (V.det[i] ? (s.rol ? " lin" : " on") : "");
     const u = SIM.UNIDAD[s.tipo];
+    if (V.val[i] === undefined || V.val[i] === null) {
+      v.textContent = "sin dato"; v.style.color = "var(--txt3)";
+      d.textContent = "—"; led.className = "led";
+      return;
+    }
+    v.style.color = "";
     v.textContent = (s.tipo === T.DIG_ALTO || s.tipo === T.DIG_BAJO) ? (V.val[i] ? "alto" : "bajo")
                   : V.val[i] + (u ? " " + u : "");
     d.textContent = SIM.daDistancia(s.tipo)
@@ -1180,9 +1210,47 @@ function trasEditar() {
   V.det = sensores.map(() => false);
   reset(); redibujaTodo();
 }
+/* pone el sensor sobre la orilla del robot, mirando hacia donde dice el angulo */
+const LADO_MM = 98;
+function enLaOrilla(angGrados) {
+  const a = angGrados * Math.PI/180, h = LADO_MM/2 - 1;
+  const dx = Math.cos(a), dy = Math.sin(a);
+  const t = Math.min(Math.abs(dx) < 1e-6 ? 1e9 : h/Math.abs(dx),
+                     Math.abs(dy) < 1e-6 ? 1e9 : h/Math.abs(dy));
+  return { x: Math.round(t*dx), y: Math.round(t*dy) };
+}
+const sectorDe = a => { const n = ((a + 180) % 360 + 360) % 360 - 180;
+  return Math.abs(n) <= 45 ? 0 : (n > 45 && n <= 135) ? 1 : (n < -45 && n >= -135) ? 2 : 3; };
+
 $("#btnAdd").onclick = () => {
-  sensores.push({ id:"s" + (sensores.length+1), nombre:"Sensor " + (sensores.length+1),
-                  tipo:T.DIG_ALTO, rol:0, sector:0, umbral:0, x:46, y:0, ang:0 });
+  // busca un angulo libre para que no se encimen
+  const usados = sensores.filter(s => s.rol === 0).map(s => s.ang);
+  const prefer = [0,30,-30,60,-60,90,-90,15,-15,45,-45,120,-120,150,-150,180];
+  const ang = prefer.find(a => !usados.includes(a)) ?? 0;
+  const p = enLaOrilla(ang);
+  const n = sensores.length + 1;
+  sensores.push({ id:"s"+n, nombre:"Sensor "+n, tipo:T.DIG_ALTO, rol:0,
+                  sector:sectorDe(ang), umbral:0, x:p.x, y:p.y, ang });
+  armaEditor(); trasEditar();
+};
+
+SIM.NOMBRE_TIPO.forEach((n,i) => $("#abTipo").add(new Option(n,i)));
+$("#abTipo").value = String(T.DIG_ALTO);
+$("#btnAbanico").onclick = () => {
+  const N = Math.max(2, Math.min(24, Number($("#abN").value)));
+  const ap = Math.max(10, Math.min(360, Number($("#abAp").value)));
+  const tipo = Number($("#abTipo").value), um = Number($("#abUm").value);
+  const linea = sensores.filter(s => s.rol === 1);
+  const viejos = $("#abBorrar").checked ? [] : sensores.filter(s => s.rol === 0);
+  const nuevos = [];
+  const paso = N > 1 ? ap/(N-1) : 0;
+  for (let i = 0; i < N; i++) {
+    const ang = Math.round(ap === 360 ? (i*360/N) - 180 : (i*paso) - ap/2);
+    const p = enLaOrilla(ang);
+    nuevos.push({ id:"a"+(i+1), nombre:"Abanico "+(i+1)+" ("+ang+"°)", tipo, rol:0,
+                  sector:sectorDe(ang), umbral:um, x:p.x, y:p.y, ang });
+  }
+  sensores = [...viejos, ...nuevos, ...linea];
   armaEditor(); trasEditar();
 };
 $("#btnDefault").onclick = () => { sensores = SIM.SENSORES_DEF.map(s => ({ ...s })); armaEditor(); trasEditar(); };

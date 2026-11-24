@@ -180,6 +180,11 @@ Qué es cada columna:
 Puedes poner los que quieras: dos, seis, diez. El programa trabaja por sectores
 y no por sensores sueltos, así que la estrategia no cambia ni una línea.
 
+Si vas a usar muchos sensores al frente, el botón **Abanico** de la pestaña
+*Mis sensores* te los acomoda repartidos sobre la orilla del robot: le dices
+cuántos y qué apertura total quieres (por ejemplo 11 sensores en 180°) y
+calcula las posiciones y los ángulos de cada uno.
+
 **Las posiciones y los ángulos no son decoración.** Con ellos el robot calcula
 hacia dónde está el rival y corrige el rumbo mientras lo embiste. Mide tu robot
 con una regla y pon los números reales.
@@ -428,6 +433,7 @@ también sirve para competir tal cual.
 | En ESP32 los motores vibran o no arrancan | el driver no soporta 20 kHz | baja `MS_PWM_FREQ` a 5000 en `configuracion.h` |
 | El robot se sale del dohyo | el umbral de línea está mal, o `T_RETROCESO` es muy corto | recalibra la línea y sube el tiempo |
 | En Arduino Uno no compila por falta de memoria | demasiados sensores con nombres largos | acorta los nombres |
+| Agregaste sensores en la plataforma y no salen en vivo | esos sensores están en tu lista pero no en el robot | pega el bloque nuevo en `configuracion.h` y vuelve a subir el firmware |
 
 ---
 
