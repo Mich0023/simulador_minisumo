@@ -868,7 +868,7 @@ function procesa(l) {
     };
     if (info && sensoresRobot.filter(Boolean).length === info.n) {
       sensores = sensoresRobot.map(s => ({ ...s }));
-      armaTablaSensores(); armaEditor(); armaLeyenda(); armaCalTabla();
+      armaTablaSensores(); armaEditor(); armaLeyenda(); armaCalTabla(); generaCodigo();
       reset(); redibujaTodo();
       log("sensores del robot: " + sensores.length, "var(--ve)");
     }
