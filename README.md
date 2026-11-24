@@ -65,18 +65,17 @@ Mac y Linux es la Terminal normal. Escribe:
 
 ```bash
 cd Documentos
-git clone https://github.com/USUARIO/minisumo.git
-cd minisumo
+git clone https://github.com/Mich0023/simulador_minisumo.git
+cd simulador_minisumo
 ```
 
-Cambia `USUARIO` por el nombre de la cuenta de GitHub donde está el repo.
 `git clone` baja una copia completa del proyecto en una carpeta nueva llamada
-`minisumo`.
+`simulador_minisumo`.
 
 Para traer los cambios más nuevos, otro día:
 
 ```bash
-cd Documentos/minisumo
+cd Documentos/simulador_minisumo
 git pull
 ```
 
@@ -463,8 +462,8 @@ git config --global user.email "tu@correo.com"
 
 ```bash
 cd Documentos
-git clone https://github.com/USUARIO/minisumo.git
-cd minisumo
+git clone https://github.com/Mich0023/simulador_minisumo.git
+cd simulador_minisumo
 ```
 
 ### Subir tus propios cambios
@@ -485,7 +484,7 @@ Dentro de seis meses lo vas a agradecer.
 
 1. Entra a [github.com](https://github.com) y crea una cuenta si no tienes.
 2. Botón **+** arriba a la derecha → **New repository**.
-3. Ponle nombre (por ejemplo `minisumo`), déjalo **Public** y **no** marques
+3. Ponle nombre (por ejemplo `simulador_minisumo`), déjalo **Public** y **no** marques
    nada más. Presiona **Create repository**.
 4. En tu terminal, dentro de la carpeta del proyecto:
 
@@ -494,7 +493,7 @@ git init
 git add .
 git commit -m "primera version del minisumo"
 git branch -M main
-git remote add origin https://github.com/TU_USUARIO/minisumo.git
+git remote add origin https://github.com/Mich0023/simulador_minisumo.git
 git push -u origin main
 ```
 
@@ -530,7 +529,7 @@ Guárdalo porque solo se ve una vez.
 ## Estructura del proyecto
 
 ```
-minisumo/
+simulador_minisumo/
 ├── README.md
 ├── LICENSE
 ├── firmware/
